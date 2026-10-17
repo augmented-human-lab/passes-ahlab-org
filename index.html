@@ -78,7 +78,11 @@
     main { max-width: 1080px; margin: 0 auto; padding: 20px 16px 64px; }
 
     /* ── gate / message screens ─────────────────────── */
-    .screen { max-width: 440px; margin: 10vh auto 0; text-align: center; background: var(--card);
+    /* sign-in / blocked / loading: centred in the space under the app bar */
+    body.centered main { display: flex; align-items: center; justify-content: center;
+                         min-height: calc(100vh - 62px - env(safe-area-inset-top)); min-height: calc(100dvh - 62px - env(safe-area-inset-top));
+                         padding-top: 24px; padding-bottom: 24px; }
+    .screen { max-width: 440px; width: 100%; margin: 0 auto; text-align: center; background: var(--card);
               border: 1px solid var(--line); border-radius: var(--radius); padding: 36px 28px; box-shadow: 0 8px 30px rgba(14,15,17,.06); }
     .screen .badge { width: 64px; height: 64px; border-radius: 50%; background: var(--grad); color: #fff; display: grid;
                      place-items: center; font-size: 26px; margin: 0 auto 18px; }
@@ -401,6 +405,7 @@
     // ── screens ─────────────────────────────────────────
     function show(id) {
       ['gate', 'blocked', 'loading', 'app'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); });
+      document.body.classList.toggle('centered', id !== 'app');
       $('who').classList.toggle('hidden', !state.session || id === 'gate');
     }
     function blocked(title, msg) { $('blockedTitle').textContent = title; $('blockedMsg').textContent = msg; show('blocked'); }
