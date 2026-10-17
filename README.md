@@ -7,11 +7,11 @@ Admin console for AHL **Visitor Passes**, the printed credit-card cards that giv
 ## What admins do here
 
 - **Activate a pass at handover.** Type the code under the QR (desktop) or tap **Scan** to
-  read the QR with the camera (phones). Optionally note who it was given to. The holder then
+  read the QR with the camera (phones). The holder then
   has 7 days to claim their account; an unclaimed pass switches back off by itself.
 - **Track every pass:** inactive, active, used, revoked and expired, with search, a
-  per-batch filter and a history for each pass (created → activated by/for → claimed → revoked).
-- **New sheet:** creates 8 inactive passes and opens the print view (Print, Download PDF,
+  per-batch filter and a history for each pass (created → activated by → claimed → revoked), and a copy button next to each code.
+- **New passes set:** creates 8 inactive passes and opens the print view (Print, Download PDF,
   or the PLT cut-line file with cutter registration marks). **Print batch** reprints any batch.
 - **Deactivate, revoke, extend** a pass from its details.
 

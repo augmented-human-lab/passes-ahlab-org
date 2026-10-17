@@ -200,7 +200,8 @@
     .drawer.open { transform: none; }
     .drawer header { display: flex; align-items: center; gap: 10px; padding: 18px 20px; border-bottom: 1px solid var(--line);
                      padding-top: calc(18px + env(safe-area-inset-top)); }
-    .drawer header .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; font-size: 18px; letter-spacing: .05em; margin-right: auto; }
+    .drawer header .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; font-size: 18px; letter-spacing: .05em; }
+    #dCopy { margin-right: auto; }
     .icon-btn { background: none; border: none; width: 36px; height: 36px; border-radius: 8px; color: var(--n80); font-size: 18px; }
     .icon-btn:hover { background: var(--bg); }
     .drawer .body { padding: 18px 20px 28px; overflow-y: auto; flex: 1; }
@@ -226,6 +227,12 @@
                     background: linear-gradient(transparent, rgba(0,0,0,.7)); }
     .scanner .bar span { font-size: 14px; opacity: .9; }
 
+    /* copy-code icon button */
+    .copy-btn { background: none; border: none; width: 28px; height: 28px; border-radius: 6px; color: var(--n60);
+                display: inline-grid; place-items: center; font-size: 13px; vertical-align: middle; margin-left: 4px;
+                transition: background .12s, color .12s; flex: none; }
+    .copy-btn:hover { background: var(--bg); color: var(--accent); }
+    .copy-btn.done { color: var(--s-active); }
     .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%);
              background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 70;
              opacity: 0; pointer-events: none; transition: opacity .2s; max-width: calc(100vw - 32px); }
@@ -291,8 +298,8 @@
           <h2><i class="fa-solid fa-chart-simple"></i>All passes</h2>
           <div class="stats" id="stats"></div>
           <div class="new-sheet">
-            <p>Need more cards? A new sheet adds <strong id="perSheet">8</strong> inactive passes, ready to print.</p>
-            <button class="btn btn-secondary" id="newSheetBtn" type="button"><i class="fa-solid fa-plus"></i>New sheet</button>
+            <p>Need more cards? A new passes set adds <strong id="perSheet">8</strong> inactive passes, ready to print.</p>
+            <button class="btn btn-secondary" id="newSheetBtn" type="button"><i class="fa-solid fa-plus"></i>New passes set</button>
           </div>
         </div>
       </div>
@@ -326,7 +333,7 @@
   <div class="scrim" id="scrim"></div>
   <aside class="drawer" id="drawer" aria-hidden="true">
     <header>
-      <span class="code" id="dCode"></span>
+      <span class="code" id="dCode"></span><span id="dCopy"></span>
       <span class="chip" id="dChip"></span>
       <button class="icon-btn" id="dClose" type="button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </header>
@@ -426,12 +433,16 @@
       if (Math.abs(ms) < day) { var h = Math.max(1, Math.round(Math.abs(ms) / 36e5)); return ms > 0 ? 'in ' + h + ' h' : h + ' h ago'; }
       return ms > 0 ? 'in ' + d + ' day' + (d === 1 ? '' : 's') : d + ' day' + (d === 1 ? '' : 's') + ' ago';
     }
+    function copyBtn(code) {
+      return '<button class="copy-btn" type="button" data-copy="' + esc(code) + '" title="Copy code" aria-label="Copy ' + esc(code) + '">' +
+             '<i class="fa-regular fa-copy"></i></button>';
+    }
     function chip(st) { return '<span class="chip st-' + st + '">' + LABEL[st] + '</span>'; }
     function who(email) { return email ? String(email).split('@')[0] : ''; }
     function holder(p) {
       if (p.state === 'USED') return esc(p.visitorName) + '<div class="sub">' + esc(p.accountEmail) + '</div>';
-      if (p.state === 'ACTIVE') return (p.givenTo ? esc(p.givenTo) : '<span class="sub">—</span>') +
-        '<div class="sub">by ' + esc(who(p.activatedBy)) + ' · lapses ' + rel(p.activeUntil) + '</div>';
+      if (p.state === 'ACTIVE') return (p.givenTo ? esc(p.givenTo) + '<div class="sub">by ' : 'Activated by ') +
+        esc(who(p.activatedBy)) + (p.givenTo ? ' · ' : '<div class="sub">') + 'lapses ' + rel(p.activeUntil) + '</div>';
       if (p.state === 'REVOKED') return '<span class="sub">revoked by ' + esc(who(p.revokedBy)) + '</span>';
       if (p.lapsed) return '<span class="sub">activation lapsed</span>';
       return '<span class="sub">—</span>';
@@ -476,13 +487,11 @@
     /** The Activate panel's result card for one pass. */
     function renderLookup(p, note) {
       var el = $('lookup'); el.classList.remove('hidden');
-      var h = '<div class="head"><span class="code">' + esc(p.code) + '</span>' + chip(p.state) + '</div>';
+      var h = '<div class="head"><span class="code">' + esc(p.code) + copyBtn(p.code) + '</span>' + chip(p.state) + '</div>';
       if (p.state === 'INACTIVE') {
         h += '<p class="facts">' + (p.lapsed ? 'An earlier activation lapsed unclaimed. ' : '') +
              'Valid until ' + fmt(p.expiresAt) + '. Activating gives the holder ' + (state.data ? state.data.activationDays : 7) +
              ' days to claim their account.</p>' +
-             '<label class="field-label" for="givenTo">Given to <span style="font-weight:400;color:var(--n70)">(optional)</span></label>' +
-             '<input class="text-input" id="givenTo" maxlength="80" placeholder="e.g. Jane Doe, NUS visiting student" />' +
              '<div class="actions"><button class="btn btn-primary" id="actBtn" type="button"><i class="fa-solid fa-bolt"></i>Activate pass</button></div>';
       } else if (p.state === 'ACTIVE') {
         h += '<p class="facts">Activated by ' + esc(p.activatedBy) + (p.givenTo ? ' for <strong>' + esc(p.givenTo) + '</strong>' : '') +
@@ -500,10 +509,10 @@
       el.innerHTML = h;
       var btn = $('actBtn');
       if (btn) {
-        $('givenTo').focus();
+        btn.focus();
         btn.addEventListener('click', function () {
           btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Activating…';
-          api('activate', { code: p.code, givenTo: $('givenTo').value }).then(function (res) {
+          api('activate', { code: p.code }).then(function (res) {
             upsert(res.pass);
             renderLookup(res.pass, '<i class="fa-solid fa-check"></i> Activated — hand the card over. It works until ' + fmt(res.pass.activeUntil, true) + '.');
             $('codeInput').value = '';
@@ -574,7 +583,7 @@
       $('countNote').textContent = rows.length + ' of ' + state.data.passes.length;
       if (!rows.length) { $('rows').innerHTML = '<tr><td colspan="5" class="empty">No passes match.</td></tr>'; return; }
       $('rows').innerHTML = rows.map(function (p) {
-        return '<tr data-open="' + esc(p.code) + '"><td class="code">' + esc(p.code) + '</td><td>' + chip(p.state) + '</td>' +
+        return '<tr data-open="' + esc(p.code) + '"><td class="code">' + esc(p.code) + copyBtn(p.code) + '</td><td>' + chip(p.state) + '</td>' +
                '<td>' + holder(p) + '</td><td class="col-batch"><span class="sub">' + esc(p.batch) + '</span></td>' +
                '<td class="col-expires"><span class="sub">' + fmt(p.expiresAt) + '</span></td></tr>';
       }).join('');
@@ -589,20 +598,40 @@
     $('batchSelect').addEventListener('change', function (e) { state.filter.batch = e.target.value; $('printBatchBtn').disabled = !e.target.value; renderRows(); });
     $('searchInput').addEventListener('input', function (e) { state.filter.q = e.target.value.trim(); renderRows(); });
     document.addEventListener('click', function (e) {
+      var c = e.target.closest('[data-copy]');
+      if (c) { copyCode(c); return; }   // don't also open the row
       var o = e.target.closest('[data-open]'); if (o) openDrawer(o.dataset.open);
     });
+    function copyCode(btn) {
+      var code = btn.dataset.copy;
+      var done = function () {
+        btn.classList.add('done'); btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+        setTimeout(function () { btn.classList.remove('done'); btn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 1400);
+        toast('Copied ' + code);
+      };
+      var legacy = function () {   // older browsers / clipboard API refused
+        var t = document.createElement('textarea');
+        t.value = code; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.select();
+        var ok = false; try { ok = document.execCommand('copy'); } catch (err) {}
+        t.remove();
+        if (ok) done(); else toast('Couldn\'t copy — select the code instead.');
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, legacy);
+      else legacy();
+    }
     $('printBatchBtn').addEventListener('click', function () { if (state.filter.batch) openPrint(state.filter.batch); });
     $('refreshLink').addEventListener('click', function (e) { e.preventDefault(); load().then(function () { toast('Refreshed'); }); });
 
     function openPrint(batch) { window.open('/print.html?batch=' + encodeURIComponent(batch), '_blank'); }
 
-    // ── new sheet ───────────────────────────────────────
+    // ── new passes set ───────────────────────────────────
     var sheetArmed = false;
     $('newSheetBtn').addEventListener('click', function () {
       var btn = $('newSheetBtn');
       if (!sheetArmed) {   // two-step confirm, no browser dialogs
         sheetArmed = true; btn.innerHTML = '<i class="fa-solid fa-check"></i>Create 8 passes?';
-        setTimeout(function () { if (sheetArmed) { sheetArmed = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New sheet'; } }, 4000);
+        setTimeout(function () { if (sheetArmed) { sheetArmed = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set'; } }, 4000);
         return;
       }
       sheetArmed = false; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Creating…';
@@ -612,7 +641,7 @@
         toast('8 new passes created — opening the print view');
         openPrint(res.batch);
       }).catch(function (err) { toast(err.message); })
-        .then(function () { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New sheet'; });
+        .then(function () { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set'; });
     });
 
     // ── drawer ──────────────────────────────────────────
@@ -621,6 +650,7 @@
       var p = find(code); if (!p) return;
       state.open = code;
       $('dCode').textContent = p.code;
+      $('dCopy').innerHTML = copyBtn(p.code);
       $('dChip').className = 'chip st-' + p.state; $('dChip').textContent = LABEL[p.state];
       var t = [];
       t.push(['', 'Created', fmt(p.createdAt, true) + (p.batch ? ' · batch ' + esc(p.batch) : '')]);
