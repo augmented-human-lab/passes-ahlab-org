@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#00C4E6"/><stop offset=".58" stop-color="#3D00CC"/><stop offset="1" stop-color="#6100FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <!-- a credit-card pass, black back side: QR block + two text lines -->
+  <rect x="86" y="146" width="340" height="220" rx="26" fill="#0E0F11"/>
+  <rect x="270" y="186" width="120" height="120" rx="14" fill="#fff"/>
+  <g fill="#0E0F11">
+    <rect x="284" y="200" width="34" height="34" rx="4"/><rect x="342" y="200" width="34" height="34" rx="4"/>
+    <rect x="284" y="258" width="34" height="34" rx="4"/><rect x="342" y="258" width="14" height="14" rx="2"/>
+    <rect x="362" y="278" width="14" height="14" rx="2"/><rect x="326" y="242" width="12" height="12" rx="2"/>
+  </g>
+  <g fill="#fff"><rect x="294" y="210" width="14" height="14" rx="2"/><rect x="352" y="210" width="14" height="14" rx="2"/><rect x="294" y="268" width="14" height="14" rx="2"/></g>
+  <rect x="120" y="196" width="104" height="20" rx="10" fill="#00D7EE"/>
+  <rect x="120" y="236" width="122" height="14" rx="7" fill="#fff" opacity=".9"/>
+  <rect x="120" y="264" width="92" height="12" rx="6" fill="#fff" opacity=".55"/>
+  <rect x="120" y="288" width="104" height="12" rx="6" fill="#fff" opacity=".55"/>
+</svg>

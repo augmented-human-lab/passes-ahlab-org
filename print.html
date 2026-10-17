@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AHL Visitor Cards — Print Sheets</title>
+
+  <!-- QR generation (client-side, works offline once loaded) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- PDF download: rasterise each A4 sheet and assemble a PDF client-side -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <style>
+    @font-face {
+      font-family: "neue-haas-grotesk-display";
+      src: url("https://use.typekit.net/af/341e74/00000000000000007735bb34/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n1&v=3") format("woff2");
+      font-display: block; font-style: normal; font-weight: 100;
+    }
+    @font-face {
+      font-family: "neue-haas-grotesk-display";
+      src: url("https://use.typekit.net/af/144886/00000000000000007735bb55/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n3&v=3") format("woff2");
+      font-display: block; font-style: normal; font-weight: 300;
+    }
+    @font-face {
+      font-family: "neue-haas-grotesk-display";
+      src: url("https://use.typekit.net/af/1ba16c/00000000000000007735bb5a/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n5&v=3") format("woff2");
+      font-display: block; font-style: normal; font-weight: 500;
+    }
+    @font-face {
+      font-family: "neue-haas-grotesk-display";
+      src: url("https://use.typekit.net/af/153042/00000000000000007735bb62/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n6&v=3") format("woff2");
+      font-display: block; font-style: normal; font-weight: 600;
+    }
+    @font-face {
+      font-family: "neue-haas-grotesk-text";
+      src: url("https://use.typekit.net/af/0230dd/00000000000000007735bb33/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3") format("woff2");
+      font-display: block; font-style: normal; font-weight: 400;
+    }
+    @font-face {
+      font-family: "neue-haas-grotesk-text";
+      src: url("https://use.typekit.net/af/160664/00000000000000007735bb32/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n5&v=3") format("woff2");
+      font-display: block; font-style: normal; font-weight: 500;
+    }
+  </style>
+
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       GEOMETRY (all mm)
+       A4 portrait          210 × 297
+       Card (ISO ID-1)      85.6 × 53.98, corner radius 3.18
+       Bleed                3 per side  →  slot 91.6 × 59.98
+       Grid                 2 cols × 4 rows = 8 cards / sheet
+       Slot x               8.4 / 110.0      (horizontally symmetric →
+                                              long-edge duplex = swap columns)
+       Slot y               19.54 / 85.52 / 151.5 / 217.48
+       Safe area            4 mm inside the cut line — no text/logo/QR
+                            crosses the cut.
+       ═══════════════════════════════════════════════════════════════ */
+    :root {
+      --grad-start: #00D7EE;
+      --grad-end:   #6100FF;
+      --accent:     #6100FF;
+      --ink:        #0E0F11;
+      --n60:        #AAAFB6;
+      --n70:        #838D95;
+      --n80:        #5E6875;
+      --font-display: "neue-haas-grotesk-display", "Helvetica Neue", sans-serif;
+      --font-text:    "neue-haas-grotesk-text", "Helvetica Neue", sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { background: #E6EAEE; font-family: var(--font-text); }
+
+    /* ── Screen-only toolbar ─────────────────────────────── */
+    .toolbar {
+      position: sticky; top: 0; z-index: 50;
+      background: #0E0F11; color: #fff;
+      padding: 14px 22px;
+      display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+      font-size: 14px;
+    }
+    .toolbar .brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+    .toolbar .brand img { height: 28px; width: auto; display: block; }
+    .toolbar h1 { font-family: var(--font-display); font-weight: 500; font-size: 16px; }
+    .toolbar .meta { color: #AAAFB6; font-size: 13px; }
+    .toolbar button {
+      background: linear-gradient(221deg, var(--grad-start) 0%, var(--grad-end) 100%);
+      color: #fff; border: none; border-radius: 8px;
+      font-family: var(--font-display); font-weight: 600; font-size: 14px;
+      padding: 10px 20px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .toolbar button svg { width: 16px; height: 16px; flex: none; }
+    .toolbar button:disabled { opacity: .6; cursor: progress; }
+    .toolbar .actions { display: flex; gap: 10px; }
+    .toolbar .caret { width: 12px; height: 12px; margin-left: -2px; }
+
+    /* Download ▾ dropdown */
+    .dropdown { position: relative; }
+    .dropdown-menu {
+      display: none;
+      position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+      min-width: 220px; padding: 6px;
+      background: #fff; color: var(--ink);
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(14,15,17,.28);
+    }
+    .dropdown.open .dropdown-menu { display: block; }
+    .dropdown-menu button {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+      width: 100%; padding: 9px 12px;
+      background: none; color: var(--ink);
+      border-radius: 6px; text-align: left;
+      font-family: var(--font-text); font-weight: 400; font-size: 13px;
+    }
+    .dropdown-menu button:hover { background: #EEF1F4; }
+    .dropdown-menu button strong { font-family: var(--font-display); font-weight: 600; font-size: 14px; }
+    .dropdown-menu button small { color: var(--n70); font-size: 12px; }
+    .instructions {
+      max-width: 210mm; margin: 18px auto 0; padding: 14px 18px;
+      background: #fff; border-radius: 10px; border: 1px solid #d7dde3;
+      font-size: 13.5px; color: #5E6875; line-height: 1.65;
+    }
+    .instructions strong { color: #0E0F11; }
+
+    /* ── Sheets ──────────────────────────────────────────── */
+    .sheet {
+      position: relative;
+      width: 210mm; height: 297mm;
+      background: #fff;
+      margin: 18px auto;
+      box-shadow: 0 6px 30px rgba(14,15,17,.18);
+      overflow: hidden;
+    }
+    .sheet-label {
+      position: absolute;
+      left: 0; right: 0; top: 288mm;
+      text-align: center;
+      font-size: 6.5pt; color: #9aa2aa;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    /* slot = card + bleed; the artwork fills the whole slot (bleed),
+       everything meaningful stays ≥ 7 mm from the slot edge (3 bleed + 4 safe) */
+    .slot {
+      position: absolute;
+      width: 91.6mm; height: 59.98mm;
+      overflow: hidden;
+    }
+
+    /* screen-only dashed cut guide at the exact cut line, with the ID-1 radius */
+    .cut-guide {
+      position: absolute; z-index: 5;
+      left: 3mm; top: 3mm;
+      width: 85.6mm; height: 53.98mm;
+      border: 0.3mm dashed rgba(255,255,255,.55);
+      border-radius: 3.18mm;
+      pointer-events: none;
+    }
+    .slot.back .cut-guide { border-color: rgba(255,255,255,.3); }
+
+    /* cutter registration marks: Ø5 mm dots at the 4 A4 corners, exact copy of the
+       cutting machine's markers.pdf template — the camera aligns the cut on these */
+    .reg-mark {
+      position: absolute;
+      width: 5mm; height: 5mm; border-radius: 50%;
+      background: #272525;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+
+    /* crop marks (print): thin ticks aligned to the cut lines, outside the bleed */
+    .crop {
+      position: absolute;
+      background: #8a9299;
+    }
+    .crop.v { width: 0.25mm; height: 3.2mm; }
+    .crop.h { height: 0.25mm; width: 3.2mm; }
+
+    /* ── FRONT face (brand / keepsake side) ──────────────── */
+    .face-front {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 90% at 12% 108%, rgba(0,215,238,.55) 0%, transparent 62%),
+        radial-gradient(ellipse 65% 110% at 92% -12%, rgba(144,77,255,.5) 0%, transparent 65%),
+        linear-gradient(221deg, #00C4E6 0%, #3D00CC 58%, #6100FF 100%);
+      color: #fff;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    /* faint concentric "signal" rings — background texture, safely off the cut edges.
+       Real elements (not box-shadow spread) so the html2canvas PDF download draws them too. */
+    .ring {
+      position: absolute;
+      right: 24mm; top: 50%;               /* ring centre: 9 mm + 15 mm radius from the right */
+      transform: translate(50%, -50%);
+      border-radius: 50%;
+    }
+    .ring.r3 { width: 48mm; height: 48mm; border: 4.5mm solid rgba(255,255,255,.045); }
+    .ring.r2 { width: 39mm; height: 39mm; border: 4.5mm solid rgba(255,255,255,.07); }
+    .ring.r1 { width: 30mm; height: 30mm; border: 0.35mm solid rgba(255,255,255,.14); }
+    .front-content {
+      position: absolute; inset: 7mm;   /* bleed 3 + safe 4 */
+      display: flex; flex-direction: column;
+    }
+    .front-top { display: flex; align-items: flex-start; }
+    .front-top img.logo { height: 6.2mm; width: auto; display: block; }
+    .front-msg { margin-top: auto; }
+    .front-msg .thanks {
+      font-family: var(--font-display);
+      font-weight: 300; font-size: 15.5pt; line-height: 1.12;
+      letter-spacing: -0.015em;
+    }
+    .front-msg .thanks strong { font-weight: 600; }
+    .front-msg .org {
+      margin-top: 2.4mm;
+      font-family: var(--font-display);
+      font-weight: 500; font-size: 6pt; letter-spacing: 0.14em;
+      line-height: 1.65;
+      text-transform: uppercase; color: rgba(255,255,255,.85);
+    }
+
+    /* ── BACK face (QR / redeem side) ────────────────────── */
+    /* black fills the whole slot = card + 3 mm bleed, nothing beyond */
+    .face-back {
+      position: absolute; inset: 0;
+      background: #000;
+      color: #fff;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .back-content {
+      position: absolute; inset: 7mm;
+      display: flex; gap: 5mm; align-items: stretch;
+    }
+    .back-left { flex: 1; position: relative; min-width: 0; }
+    /* title + steps centred on the card's vertical middle — same y as the QR centre */
+    .back-main {
+      position: absolute; left: 0; right: 0; top: 50%;
+      transform: translateY(-50%);
+    }
+    .back-chip {
+      align-self: flex-start;
+      font-family: var(--font-display);
+      font-weight: 600; font-size: 5.2pt; letter-spacing: 0.15em;
+      text-transform: uppercase; color: #fff;
+      background: linear-gradient(221deg, var(--grad-start) 0%, var(--grad-end) 100%);
+      border-radius: 5mm;
+      padding: 1.1mm 2.8mm;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .back-title {
+      font-family: var(--font-display);
+      font-weight: 500; font-size: 10pt; line-height: 1.18; letter-spacing: -0.01em;
+    }
+    .back-steps { margin-top: 2.2mm; list-style: none; }
+    .back-steps li {
+      position: relative;
+      padding-left: 3.6mm;
+      font-size: 6.2pt; line-height: 1.5; color: #C9CED4;
+    }
+    .back-steps li::before {
+      content: '';
+      /* centred on the first line box: half of 1.5 × 6.2pt ≈ 1.64 mm, minus half the dot */
+      position: absolute; left: 0; top: calc(0.75em - 0.75mm);
+      width: 1.5mm; height: 1.5mm; border-radius: 50%;
+      background: linear-gradient(221deg, var(--grad-start) 0%, var(--grad-end) 100%);
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    /* bottom row: logo */
+    .back-foot {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      justify-content: space-between;
+      font-family: var(--font-display);
+      font-weight: 500; font-size: 5.4pt; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--n70);
+    }
+    .back-foot { display: flex; align-items: center; gap: 2.6mm; white-space: nowrap; }
+    .back-foot img.logo { height: 5mm; width: auto; display: block; }
+    .back-right {
+      position: relative;
+      margin-right: 2.5mm;                 /* QR 6.5 mm inside the cut, not hugging the edge */
+      display: flex; align-items: center; justify-content: center;
+    }
+    .qr-valid {
+      margin-top: 0.6mm;
+      font-family: var(--font-display);
+      font-size: 4.6pt; letter-spacing: 0.1em; text-transform: uppercase; color: var(--n70);
+    }
+    .qr-frame {
+      width: 26mm; height: 26mm;
+      padding: 1.6mm;                     /* quiet zone */
+      background: #fff;
+      border: none;
+      border-radius: 2mm;
+    }
+    .qr-frame .qr { width: 100%; height: 100%; }
+    .qr-frame .qr img, .qr-frame .qr canvas {
+      width: 100% !important; height: 100% !important; display: block;
+    }
+    /* hangs below the QR so the QR itself sits exactly on the vertical middle */
+    .qr-token {
+      position: absolute; left: 0; right: 0; top: calc(50% + 13mm + 1.6mm);
+      text-align: center;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 5.2pt; letter-spacing: 0.06em; color: var(--n60);
+    }
+
+    /* ── Print rules ─────────────────────────────────────── */
+    @page { size: A4 portrait; margin: 0; }
+    @media print {
+      html, body { background: #fff; }
+      .toolbar, .instructions { display: none; }
+      .sheet { margin: 0; box-shadow: none; page-break-after: always; }
+      .cut-guide { display: none; }   /* crop marks only — no line survives on the cut edge */
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <div class="brand">
+      <img src="https://cdn.ahlab.org/media/site/ahllogo_white.png" alt="Augmented Human Lab" />
+      <h1>AHL Visitor Cards</h1>
+    </div>
+    <span class="meta" id="countMeta">…</span>
+    <div class="actions">
+      <button type="button" onclick="window.print()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>
+        Print
+      </button>
+      <div class="dropdown" id="downloadMenu">
+        <button type="button" id="downloadBtn" aria-haspopup="menu" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          <span>Download</span>
+          <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="dropdown-menu" role="menu">
+          <button type="button" role="menuitem" data-format="pdf">
+            <strong>PDF</strong><small>Print-ready card sheets</small>
+          </button>
+          <button type="button" role="menuitem" data-format="plt">
+            <strong>PLT</strong><small>Cut lines for the plotter</small>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="instructions">
+    <strong>Printing:</strong> A4, duplex, <strong>flip on long edge</strong>, scale <strong>100%</strong>
+    (no "fit to page"), backgrounds/colour ON. Card stock 250–350 gsm recommended.
+    Cut on the crop marks — the dashed outline is screen-only. Corner-round with a 3.18&nbsp;mm punch
+    for the true credit-card feel. Each sheet holds 8 cards; back sheets are column-mirrored so
+    fronts and backs line up after the duplex flip.
+  </div>
+
+  <div id="sheets"></div>
+
+  
+  <script>
+  window.buildCards = function (TOKENS, BASE) {
+    // ── geometry (mm) ───────────────────────────────────────
+    var SLOT_W = 91.6, SLOT_H = 59.98, BLEED = 3;
+    var CARD_W = 85.6, CARD_H = 53.98;
+    var COLS = [8.4, 110.0];
+    var ROWS = [19.54, 85.52, 151.5, 217.48];
+    var PER_SHEET = COLS.length * ROWS.length;   // 8
+
+    // cutter registration-mark centres (mm), from the machine's markers.pdf:
+    // 190 × 277 mm apart = the cutter bed. Dot Ø 5 mm.
+    var REG_MARKS = [[10.070, 10.158], [200.070, 10.158], [10.070, 287.158], [200.070, 287.158]];
+    var REG_R = 2.5;
+    function addRegMarks(sheet) {
+      REG_MARKS.forEach(function (m) {
+        var d = el('div', 'reg-mark', sheet);
+        d.style.left = mm(m[0] - REG_R);
+        d.style.top  = mm(m[1] - REG_R);
+      });
+    }
+
+    // ── helpers ─────────────────────────────────────────────
+    function el(tag, cls, parent) {
+      var n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (parent) parent.appendChild(n);
+      return n;
+    }
+    function mm(n) { return n + 'mm'; }
+
+    // crop marks for one slot: ticks aligned to the 4 cut lines, outside the bleed
+    function addCropMarks(sheet, x, y) {
+      var cutL = x + BLEED, cutR = x + BLEED + CARD_W;
+      var cutT = y + BLEED, cutB = y + BLEED + CARD_H;
+      var GAP = 1, LEN = 3.2;
+      [cutL, cutR].forEach(function (cx) {
+        var top = el('div', 'crop v', sheet);
+        top.style.left = mm(cx); top.style.top = mm(y - GAP - LEN);
+        var bot = el('div', 'crop v', sheet);
+        bot.style.left = mm(cx); bot.style.top = mm(y + SLOT_H + GAP);
+      });
+      [cutT, cutB].forEach(function (cy) {
+        var left = el('div', 'crop h', sheet);
+        left.style.top = mm(cy); left.style.left = mm(x - GAP - LEN);
+        var right = el('div', 'crop h', sheet);
+        right.style.top = mm(cy); right.style.left = mm(x + SLOT_W + GAP);
+      });
+    }
+
+    function makeSlot(sheet, x, y, isBack) {
+      var slot = el('div', 'slot' + (isBack ? ' back' : ''), sheet);
+      slot.style.left = mm(x);
+      slot.style.top  = mm(y);
+      addCropMarks(sheet, x, y);
+      el('div', 'cut-guide', slot);
+      return slot;
+    }
+
+    function buildFront(slot) {
+      var face = el('div', 'face-front', slot);
+      ['r3', 'r2', 'r1'].forEach(function (c) { el('div', 'ring ' + c, face); });
+      var content = el('div', 'front-content', face);
+
+      var top = el('div', 'front-top', content);
+      var logo = el('img', 'logo', top);
+      logo.src = 'https://cdn.ahlab.org/media/site/ahllogo_white.png';
+      logo.alt = 'Augmented Human Lab';
+
+      var msg = el('div', 'front-msg', content);
+      var thanks = el('div', 'thanks', msg);
+      thanks.innerHTML = 'Visitor <strong>Pass</strong>';
+      var org = el('div', 'org', msg);
+      org.innerHTML = 'Augmented Human Lab<br>National University of Singapore';
+    }
+
+    function buildBack(slot, token, validTo) {
+      var face = el('div', 'face-back', slot);
+      var content = el('div', 'back-content', face);
+
+      var left = el('div', 'back-left', content);
+      var chip = el('span', 'back-chip', left);
+      chip.textContent = 'Visitor Pass';
+      var main = el('div', 'back-main', left);
+      var title = el('div', 'back-title', main);
+      title.innerHTML = 'My AHL Account';
+      var steps = el('ul', 'back-steps', main);
+      ['Scan the code', 'Fill a 30-second form', 'Get email, Slack &amp; calendar'].forEach(function (s) {
+        el('li', null, steps).innerHTML = s;
+      });
+      var foot = el('div', 'back-foot', content);
+      var backLogo = el('img', 'logo', foot);
+      backLogo.src = 'https://cdn.ahlab.org/media/site/ahllogo_white.png';
+      backLogo.alt = 'Augmented Human Lab';
+
+      var right = el('div', 'back-right', content);
+      var frame = el('div', 'qr-frame', right);
+      var qr = el('div', 'qr', frame);
+      var tokenLabel = el('div', 'qr-token', right);
+      tokenLabel.textContent = token;
+      if (validTo) {
+        el('div', 'qr-valid', tokenLabel).textContent = 'Valid to ' + validTo;
+      }
+
+      new QRCode(qr, {
+        text: BASE + '?token=' + encodeURIComponent(token),
+        width: 512, height: 512,
+        colorDark: '#0E0F11', colorLight: '#FFFFFF',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+
+    // ── build sheets ────────────────────────────────────────
+    var container = document.getElementById('sheets');
+    var sheetCount = Math.ceil(TOKENS.length / PER_SHEET);
+
+    for (var s = 0; s < sheetCount; s++) {
+      var group = TOKENS.slice(s * PER_SHEET, (s + 1) * PER_SHEET);
+
+      // FRONT sheet — row-major, natural column order
+      var front = el('div', 'sheet', container);
+      group.forEach(function (t, i) {
+        var r = Math.floor(i / COLS.length), c = i % COLS.length;
+        buildFront(makeSlot(front, COLS[c], ROWS[r], false));
+      });
+      addRegMarks(front);   // front only: it's the side facing the cutter's camera
+      el('div', 'sheet-label', front).textContent =
+        'AHL visitor cards — sheet ' + (s + 1) + '/' + sheetCount + ' — FRONT — duplex: flip on long edge';
+
+      // BACK sheet — columns mirrored so long-edge duplex lines up
+      var back = el('div', 'sheet', container);
+      group.forEach(function (t, i) {
+        var r = Math.floor(i / COLS.length), c = i % COLS.length;
+        var mc = COLS.length - 1 - c;
+        buildBack(makeSlot(back, COLS[mc], ROWS[r], true), t.token, t.validTo);
+      });
+      el('div', 'sheet-label', back).textContent =
+        'AHL visitor cards — sheet ' + (s + 1) + '/' + sheetCount + ' — BACK (mirrored) — cut at crop marks, round corners 3.18 mm';
+    }
+
+    document.getElementById('countMeta').textContent =
+      TOKENS.length + ' card' + (TOKENS.length === 1 ? '' : 's') + ' · ' +
+      sheetCount + ' duplex sheet' + (sheetCount === 1 ? '' : 's') + ' (A4, 8-up)' +
+      '';
+
+    // ── downloads ───────────────────────────────────────────
+    var menu = document.getElementById('downloadMenu');
+    var dlBtn = document.getElementById('downloadBtn');
+    var dlLabel = dlBtn.querySelector('span');
+    var BATCH = String((TOKENS[0] && TOKENS[0].batch) || 'cards').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+    function setMenu(open) {
+      menu.classList.toggle('open', open);
+      dlBtn.setAttribute('aria-expanded', String(open));
+    }
+    dlBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setMenu(!menu.classList.contains('open'));
+    });
+    document.addEventListener('click', function () { setMenu(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setMenu(false); });
+    Array.prototype.forEach.call(menu.querySelectorAll('[data-format]'), function (item) {
+      item.addEventListener('click', function (e) {
+        e.stopPropagation();
+        setMenu(false);
+        run(item.getAttribute('data-format') === 'plt' ? downloadCutLines : downloadPdf);
+      });
+    });
+
+    function run(job) {
+      dlBtn.disabled = true;
+      Promise.resolve().then(job).catch(function (err) {
+        console.error(err);
+        dlLabel.textContent = 'Download failed — use Print ▸ Save as PDF';
+        return new Promise(function (res) { setTimeout(res, 4000); });
+      }).then(function () {
+        dlBtn.disabled = false;
+        dlLabel.textContent = 'Download';
+      });
+    }
+
+    // PDF: each .sheet is exactly A4, so it's rendered at ~300 dpi and placed
+    // full-page (0 margin) — the PDF prints at 100% like the HTML does.
+    function downloadPdf() {
+      var sheets = Array.prototype.slice.call(document.querySelectorAll('.sheet'));
+      var pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      return sheets.reduce(function (chain, sheet, i) {
+        return chain.then(function () {
+          dlLabel.textContent = 'Rendering ' + (i + 1) + '/' + sheets.length + '…';
+          return html2canvas(sheet, {
+            scale: 300 / 96, useCORS: true, backgroundColor: '#ffffff',
+            onclone: function (doc) {   // screen-only guides never reach the PDF
+              Array.prototype.forEach.call(doc.querySelectorAll('.cut-guide'), function (g) { g.style.display = 'none'; });
+            }
+          }).then(function (canvas) {
+            if (i > 0) pdf.addPage('a4', 'portrait');
+            pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297);
+          });
+        });
+      }, Promise.resolve()).then(function () {
+        pdf.save('ahl-visitor-cards-' + BATCH + '.pdf');
+      });
+    }
+
+    // PLT: for now a vector PDF with the 4 registration marks + the cut paths — one rounded
+    // rectangle (ID-1, r 3.18 mm) per card at its FRONT-sheet position,
+    // one page per sheet. Later this becomes a real HP-GL .plt file.
+    function downloadCutLines() {
+      var pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setFillColor(0x27, 0x25, 0x25);
+      pdf.setLineWidth(0.1);
+      for (var s = 0; s < sheetCount; s++) {
+        if (s > 0) pdf.addPage('a4', 'portrait');
+        REG_MARKS.forEach(function (m) { pdf.circle(m[0], m[1], REG_R, 'F'); });
+        var n = Math.min(PER_SHEET, TOKENS.length - s * PER_SHEET);
+        for (var i = 0; i < n; i++) {
+          var r = Math.floor(i / COLS.length), c = i % COLS.length;
+          pdf.roundedRect(COLS[c] + BLEED, ROWS[r] + BLEED, CARD_W, CARD_H, 3.18, 3.18, 'S');
+        }
+      }
+      pdf.save('ahl-visitor-cards-' + BATCH + '-cutlines.pdf');
+    }
+  };
+  </script>
+  <script>
+  // Loader: fetch this batch with the console's sign-in (same origin → same localStorage).
+  (function () {
+    var PROD_API = 'https://script.google.com/macros/s/AKfycbwjUs3ZL8jfmclSfxAVKIJSwhNdV84gyWqRpFwM9FHCHaUCL15lW-eh7hIM0MOGp-yb/exec';
+    var DEV_API  = 'https://script.google.com/macros/s/AKfycbynkdtZwAc1nRCNh4caZOZKb7DyXxpiheLr21r65r_QLoNnAt7Pjgjfa1QM7JLJ1i4K/exec';
+    var API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? DEV_API : PROD_API;
+    var meta = document.getElementById('countMeta');
+    function fail(msg) {
+      meta.textContent = '';
+      var box = document.createElement('div');
+      box.className = 'instructions';
+      box.innerHTML = '<strong>Can\'t load the cards.</strong> ' + msg + ' <a href="/">Back to Visitor Passes</a>';
+      document.getElementById('sheets').before(box);
+      document.querySelectorAll('.toolbar button').forEach(function (b) { b.disabled = true; });
+    }
+    var session = null;
+    try { session = JSON.parse(localStorage.getItem('ahl-auth-v1') || 'null'); } catch (e) {}
+    var batch = new URLSearchParams(location.search).get('batch') || '';
+    if (!session || !session.token) { fail('Please sign in on the console first.'); return; }
+    if (!batch) { fail('No batch chosen.'); return; }
+    meta.textContent = 'Loading ' + batch + '…';
+    fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                 body: JSON.stringify({ action: 'list', auth: session.token }) })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res.ok) { fail(res.error || 'Request failed.'); return; }
+        // Print only passes that can still be handed out.
+        var tokens = res.passes.filter(function (p) {
+          return p.batch === batch && (p.state === 'INACTIVE' || p.state === 'ACTIVE');
+        }).sort(function (a, b) { return a.code.localeCompare(b.code); }).map(function (p) {
+          var d = new Date(p.expiresAt);
+          var mmyyyy = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Singapore', month: '2-digit', year: 'numeric' });
+          return { token: p.code, batch: p.batch, validTo: p.expiresAt ? mmyyyy : '' };
+        });
+        if (!tokens.length) { fail('This batch has no printable (inactive or active) passes.'); return; }
+        document.title = 'Print · ' + batch + ' — Visitor Passes';
+        window.buildCards(tokens, res.publicUrl);
+      })
+      .catch(function (err) { fail(err.message); });
+  })();
+  </script>
+</body>
+</html>

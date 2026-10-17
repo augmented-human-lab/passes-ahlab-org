@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Visitor Passes — Augmented Human Lab</title>
+  <meta name="description" content="Admin console for AHL Visitor Passes: activate a card at handover, scan its QR on mobile, track every pass and print new credit-card sheets." />
+  <link rel="canonical" href="https://passes.ahlab.org/" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="theme-color" content="#3D00CC" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Augmented Human Lab" />
+  <meta property="og:title" content="Visitor Passes — AHL admin console" />
+  <meta property="og:description" content="Activate AHL Visitor Passes at handover, scan cards on mobile, track every pass and print new card sheets. For lab admins." />
+  <meta property="og:url" content="https://passes.ahlab.org/" />
+  <meta property="og:image" content="https://passes.ahlab.org/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="AHL Visitor Passes console: pass counts and an Activate panel next to a black Visitor Pass card." />
+  <meta property="og:locale" content="en_SG" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Visitor Passes — AHL admin console" />
+  <meta name="twitter:description" content="Activate AHL Visitor Passes at handover, scan cards on mobile, track every pass and print new card sheets." />
+  <meta name="twitter:image" content="https://passes.ahlab.org/og-image.png" />
+  <meta name="twitter:image:alt" content="AHL Visitor Passes console: pass counts and an Activate panel next to a black Visitor Pass card." />
+
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --accent: #6100FF; --accent-ink: #4400B3;
+      --grad: linear-gradient(221deg, #00D7EE 0%, #6100FF 100%);
+      --grad-bar: linear-gradient(221deg, #00C4E6 0%, #3D00CC 58%, #6100FF 100%);
+      --bg: #F4F7F9; --card: #FFFFFF; --line: #E3E8EC; --line-2: #D7DDE3;
+      --ink: #0E0F11; --n80: #5E6875; --n70: #838D95; --n60: #AAAFB6;
+      --s-inactive: #5E6875; --s-inactive-bg: #EDF0F3;
+      --s-active: #0A7A3E;   --s-active-bg: #E3F7EC;
+      --s-used: #3D00CC;     --s-used-bg: #EEE7FF;
+      --s-revoked: #A8071A;  --s-revoked-bg: #FCE8EA;
+      --s-expired: #8A5A00;  --s-expired-bg: #FDF0E1;
+      --radius: 14px;
+    }
+    html, body { background: var(--bg); color: var(--ink); }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.5; min-height: 100vh; -webkit-font-smoothing: antialiased;
+    }
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
+
+    /* ── app bar ─────────────────────────────────────── */
+    .appbar { background-color: #3D00CC; background-image: var(--grad-bar); color: #fff;
+              padding-top: env(safe-area-inset-top); position: sticky; top: 0; z-index: 30; }
+    .appbar-inner { max-width: 1080px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 14px; }
+    .appbar img.logo { height: 30px; width: auto; display: block; }
+    .appbar .title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin-right: auto; white-space: nowrap; }
+    .appbar .who { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .appbar .who img { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,.6); object-fit: cover; }
+    .appbar .who .email { opacity: .9; }
+    @media (max-width: 600px) {
+      .appbar-inner { gap: 10px; }
+      .appbar img.logo { height: 26px; }
+      .appbar .title { font-size: 15px; }
+      .appbar .who .email { display: none; }
+    }
+    .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.28);
+                 border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; transition: background .15s; }
+    .btn-ghost:hover { background: rgba(255,255,255,.24); }
+
+    main { max-width: 1080px; margin: 0 auto; padding: 20px 16px 64px; }
+
+    /* ── gate / message screens ─────────────────────── */
+    .screen { max-width: 440px; margin: 10vh auto 0; text-align: center; background: var(--card);
+              border: 1px solid var(--line); border-radius: var(--radius); padding: 36px 28px; box-shadow: 0 8px 30px rgba(14,15,17,.06); }
+    .screen .badge { width: 64px; height: 64px; border-radius: 50%; background: var(--grad); color: #fff; display: grid;
+                     place-items: center; font-size: 26px; margin: 0 auto 18px; }
+    .screen h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+    .screen p { color: var(--n80); font-size: 15px; margin-bottom: 22px; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px;
+           padding: 11px 18px; font-weight: 600; font-size: 15px; border: 1px solid transparent;
+           transition: box-shadow .15s, background .15s, border-color .15s, opacity .15s; white-space: nowrap; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--grad); color: #fff; box-shadow: 0 4px 14px rgba(97,0,255,.22); }
+    .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 22px rgba(97,0,255,.34); }
+    .btn-secondary { background: #fff; color: var(--ink); border-color: var(--line-2); }
+    .btn-secondary:hover:not(:disabled) { background: #F7F9FA; border-color: #C5CDD5; }
+    .btn-danger { background: #fff; color: var(--s-revoked); border-color: #F0C4CA; }
+    .btn-danger:hover:not(:disabled) { background: var(--s-revoked-bg); }
+    .btn-danger.confirm { background: var(--s-revoked); color: #fff; border-color: var(--s-revoked); }
+    .btn-sm { padding: 7px 12px; font-size: 13.5px; border-radius: 8px; }
+
+    /* ── panels ─────────────────────────────────────── */
+    .grid-top { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 820px) { .grid-top { grid-template-columns: 1fr; } }
+    .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+    .panel h2 { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--n80);
+                margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .panel h2 i { color: var(--accent); }
+
+    /* activate */
+    .code-row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+    .code-field { flex: 1 1 220px; display: flex; align-items: center; border: 1.5px solid var(--line-2); border-radius: 10px;
+                  background: #fff; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
+    .code-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(97,0,255,.12); }
+    .code-field .prefix { padding: 0 4px 0 14px; color: var(--n70); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                          font-size: 17px; letter-spacing: .06em; user-select: none; }
+    .code-field input { flex: 1; min-width: 0; border: none; outline: none; padding: 12px 12px 12px 0;
+                        font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; letter-spacing: .08em;
+                        text-transform: uppercase; background: transparent; }
+    .code-field input::placeholder { color: #C5CDD5; letter-spacing: .08em; }
+    .scan-only { display: none; }
+    .scan-text { display: none; }
+    @media (pointer: coarse) { .scan-only { display: inline-flex; } .scan-text { display: inline; } }
+    .hint { color: var(--n70); font-size: 13px; margin-top: 10px; }
+
+    .lookup { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px; }
+    .lookup .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .lookup .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; font-weight: 600; letter-spacing: .05em; }
+    .lookup .facts { color: var(--n80); font-size: 14px; margin-bottom: 12px; }
+    .field-label { font-size: 13px; font-weight: 600; margin: 4px 0 6px; display: block; }
+    .text-input { width: 100%; border: 1.5px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-size: 15px; outline: none;
+                  transition: border-color .15s, box-shadow .15s; }
+    .text-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(97,0,255,.12); }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .msg { margin-top: 12px; border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+    .msg.ok { background: var(--s-active-bg); color: var(--s-active); }
+    .msg.err { background: var(--s-revoked-bg); color: var(--s-revoked); }
+    .msg.info { background: #EEF2FF; color: #2B3A8C; }
+
+    /* stats */
+    .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+    @media (max-width: 520px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .stat { border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 10px; background: #fff; text-align: left;
+            transition: border-color .15s, box-shadow .15s; }
+    .stat:hover { border-color: #C5CDD5; }
+    .stat.on { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(97,0,255,.10); }
+    .stat .n { font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .stat .l { font-size: 12px; color: var(--n80); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+    .new-sheet { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+                 border-top: 1px solid var(--line); padding-top: 14px; }
+    .new-sheet p { color: var(--n80); font-size: 13.5px; max-width: 34ch; }
+
+    /* chips */
+    .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em;
+            text-transform: uppercase; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+    .st-INACTIVE { color: var(--s-inactive); background: var(--s-inactive-bg); }
+    .st-ACTIVE   { color: var(--s-active);   background: var(--s-active-bg); }
+    .st-USED     { color: var(--s-used);     background: var(--s-used-bg); }
+    .st-REVOKED  { color: var(--s-revoked);  background: var(--s-revoked-bg); }
+    .st-EXPIRED  { color: var(--s-expired);  background: var(--s-expired-bg); }
+    .dot.st-INACTIVE { background: var(--s-inactive); } .dot.st-ACTIVE { background: var(--s-active); }
+    .dot.st-USED { background: var(--s-used); } .dot.st-REVOKED { background: var(--s-revoked); } .dot.st-EXPIRED { background: #C77700; }
+
+    /* list */
+    .list-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .list-tools .search { flex: 1 1 220px; position: relative; }
+    .list-tools .search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--n60); font-size: 14px; }
+    .list-tools .search input { padding-left: 34px; }
+    .list-tools select { border: 1.5px solid var(--line-2); border-radius: 10px; padding: 10px 12px; background: #fff; font-size: 14px; max-width: 100%; }
+    .count-note { color: var(--n70); font-size: 13px; margin-left: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--n70);
+         padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    tbody tr { cursor: pointer; transition: background .12s; }
+    tbody tr:hover { background: #F7F9FA; }
+    td.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; letter-spacing: .04em; white-space: nowrap; }
+    td .sub { color: var(--n70); font-size: 12.5px; }
+    .empty { text-align: center; color: var(--n70); padding: 34px 10px; }
+    @media (max-width: 680px) {
+      thead { display: none; }
+      table, tbody, tr, td { display: block; width: 100%; }
+      tbody tr { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; padding: 10px 12px; }
+      td { border: none; padding: 2px 0; }
+      td.col-batch, td.col-expires { display: none; }
+    }
+
+    /* drawer */
+    .scrim { position: fixed; inset: 0; background: rgba(14,15,17,.45); z-index: 40; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .scrim.open { opacity: 1; pointer-events: auto; }
+    .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100vw); background: #fff; z-index: 41;
+              box-shadow: -10px 0 40px rgba(14,15,17,.18); transform: translateX(100%); transition: transform .22s ease;
+              display: flex; flex-direction: column; }
+    .drawer.open { transform: none; }
+    .drawer header { display: flex; align-items: center; gap: 10px; padding: 18px 20px; border-bottom: 1px solid var(--line);
+                     padding-top: calc(18px + env(safe-area-inset-top)); }
+    .drawer header .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; font-size: 18px; letter-spacing: .05em; margin-right: auto; }
+    .icon-btn { background: none; border: none; width: 36px; height: 36px; border-radius: 8px; color: var(--n80); font-size: 18px; }
+    .icon-btn:hover { background: var(--bg); }
+    .drawer .body { padding: 18px 20px 28px; overflow-y: auto; flex: 1; }
+    .timeline { list-style: none; margin: 4px 0 18px; }
+    .timeline li { position: relative; padding: 0 0 14px 22px; font-size: 14px; }
+    .timeline li::before { content: ''; position: absolute; left: 5px; top: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--n60); }
+    .timeline li::after { content: ''; position: absolute; left: 8.5px; top: 18px; bottom: 0; width: 1px; background: var(--line-2); }
+    .timeline li:last-child::after { display: none; }
+    .timeline li.k-active::before { background: var(--s-active); }
+    .timeline li.k-used::before { background: var(--s-used); }
+    .timeline li.k-revoked::before { background: var(--s-revoked); }
+    .timeline li.k-expired::before { background: #C77700; }
+    .timeline .when { color: var(--n70); font-size: 12.5px; }
+    .drawer h3 { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--n70); margin: 6px 0 10px; }
+
+    /* scanner */
+    .scanner { position: fixed; inset: 0; background: #000; z-index: 60; display: flex; flex-direction: column; }
+    .scanner video { flex: 1; width: 100%; object-fit: cover; }
+    .scanner .frame { position: absolute; left: 50%; top: 45%; width: min(64vw, 280px); aspect-ratio: 1; transform: translate(-50%, -50%);
+                      border-radius: 18px; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.85); }
+    .scanner .bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+                    display: flex; justify-content: space-between; align-items: center; color: #fff;
+                    background: linear-gradient(transparent, rgba(0,0,0,.7)); }
+    .scanner .bar span { font-size: 14px; opacity: .9; }
+
+    .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+             background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 70;
+             opacity: 0; pointer-events: none; transition: opacity .2s; max-width: calc(100vw - 32px); }
+    .toast.show { opacity: 1; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    footer { text-align: center; color: var(--n60); font-size: 12px; margin-top: 28px; }
+  </style>
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar-inner">
+      <img class="logo" src="https://cdn.ahlab.org/media/site/ahllogo_white.png" alt="Augmented Human Lab" />
+      <div class="title">Visitor Passes</div>
+      <div class="who hidden" id="who">
+        <img id="whoPic" alt="" />
+        <span class="email" id="whoEmail"></span>
+        <button class="btn-ghost" id="signOutBtn" type="button">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- signed out -->
+    <section class="screen hidden" id="gate">
+      <div class="badge"><i class="fa-solid fa-id-card"></i></div>
+      <h1>Visitor Passes</h1>
+      <p>Activate, track and print AHL Visitor Passes. Sign in with your @ahlab.org admin account.</p>
+      <button class="btn btn-primary" id="signInBtn" type="button"><i class="fa-brands fa-google"></i>Sign in with AHL</button>
+    </section>
+
+    <!-- signed in, not an admin / other blocking error -->
+    <section class="screen hidden" id="blocked">
+      <div class="badge" style="background:#A8071A"><i class="fa-solid fa-lock"></i></div>
+      <h1 id="blockedTitle">Admins only</h1>
+      <p id="blockedMsg"></p>
+      <button class="btn btn-secondary" id="blockedSignOut" type="button">Sign in with another account</button>
+    </section>
+
+    <!-- loading -->
+    <section class="screen hidden" id="loading" style="border:none;background:none;box-shadow:none">
+      <i class="fa-solid fa-circle-notch spin" style="font-size:28px;color:var(--accent)"></i>
+    </section>
+
+    <!-- console -->
+    <section class="hidden" id="app">
+      <div class="grid-top">
+        <div class="panel">
+          <h2><i class="fa-solid fa-bolt"></i>Activate a pass</h2>
+          <form class="code-row" id="lookupForm" autocomplete="off">
+            <label class="code-field">
+              <span class="prefix">AHLV-</span>
+              <input id="codeInput" inputmode="text" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX" maxlength="40" aria-label="Pass code" />
+            </label>
+            <button class="btn btn-primary" type="submit" id="lookupBtn"><i class="fa-solid fa-magnifying-glass"></i>Find</button>
+            <button class="btn btn-secondary scan-only" type="button" id="scanBtn"><i class="fa-solid fa-qrcode"></i>Scan</button>
+          </form>
+          <p class="hint">Type the code printed under the QR on the card's back<span class="scan-text"> — or tap <strong>Scan</strong> to read the QR</span>.</p>
+          <div class="lookup hidden" id="lookup"></div>
+        </div>
+
+        <div class="panel">
+          <h2><i class="fa-solid fa-chart-simple"></i>All passes</h2>
+          <div class="stats" id="stats"></div>
+          <div class="new-sheet">
+            <p>Need more cards? A new sheet adds <strong id="perSheet">8</strong> inactive passes, ready to print.</p>
+            <button class="btn btn-secondary" id="newSheetBtn" type="button"><i class="fa-solid fa-plus"></i>New sheet</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="list-tools">
+          <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
+            <input class="text-input" id="searchInput" placeholder="Search code, name, email…" /></div>
+          <select id="stateSelect" aria-label="Status">
+            <option value="ALL">All statuses</option>
+            <option value="INACTIVE">Inactive</option>
+            <option value="ACTIVE">Active</option>
+            <option value="USED">Used</option>
+            <option value="REVOKED">Revoked</option>
+            <option value="EXPIRED">Expired</option>
+          </select>
+          <select id="batchSelect" aria-label="Batch"><option value="">All batches</option></select>
+          <button class="btn btn-secondary btn-sm" id="printBatchBtn" type="button" title="Print the unused passes in this batch"><i class="fa-solid fa-print"></i>Print batch</button>
+          <span class="count-note" id="countNote"></span>
+        </div>
+        <table>
+          <thead><tr><th>Code</th><th>Status</th><th>Holder</th><th class="col-batch">Batch</th><th class="col-expires">Expires</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <footer>Augmented Human Lab · Visitor Passes console · <a href="#" id="refreshLink" style="color:inherit">Refresh</a></footer>
+    </section>
+  </main>
+
+  <!-- pass detail drawer -->
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <header>
+      <span class="code" id="dCode"></span>
+      <span class="chip" id="dChip"></span>
+      <button class="icon-btn" id="dClose" type="button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </header>
+    <div class="body" id="dBody"></div>
+  </aside>
+
+  <!-- camera scanner (mobile) -->
+  <div class="scanner hidden" id="scanner">
+    <video id="scanVideo" playsinline muted></video>
+    <div class="frame"></div>
+    <div class="bar"><span id="scanStatus">Point at the QR on the card's back</span>
+      <button class="btn-ghost" id="scanClose" type="button">Cancel</button></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    // ── config ──────────────────────────────────────────
+    var PROD_API = 'https://script.google.com/macros/s/AKfycbwjUs3ZL8jfmclSfxAVKIJSwhNdV84gyWqRpFwM9FHCHaUCL15lW-eh7hIM0MOGp-yb/exec';
+    var DEV_API  = 'https://script.google.com/macros/s/AKfycbynkdtZwAc1nRCNh4caZOZKb7DyXxpiheLr21r65r_QLoNnAt7Pjgjfa1QM7JLJ1i4K/exec';
+    var IS_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    var API = IS_LOCAL ? DEV_API : PROD_API;
+    var BROKER = 'https://script.google.com/a/macros/ahlab.org/s/AKfycbwHPIr3JR0ZQ9471E1W0KqM-BggXLv8g8wvx0Z3Qwjx2HajD71gBf60CxrJBcrN_51T/exec';
+    var DOMAIN = 'ahlab.org';
+    var SESSION_KEY = 'ahl-auth-v1', NONCE_KEY = 'ahl-auth-nonce-v1', RETURN_KEY = 'ahl-auth-return-v1';
+    var SESSION_TTL = 7 * 24 * 3600 * 1000;   // matches the broker's token TTL
+
+    var STATES = ['INACTIVE', 'ACTIVE', 'USED', 'REVOKED', 'EXPIRED'];
+    var LABEL = { INACTIVE: 'Inactive', ACTIVE: 'Active', USED: 'Used', REVOKED: 'Revoked', EXPIRED: 'Expired' };
+
+    var state = { session: null, data: null, filter: { state: 'ALL', q: '', batch: '' }, open: null };
+    function $(id) { return document.getElementById(id); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+
+    // ── session (AHL member-login broker) ────────────────
+    function getSession() {
+      try {
+        var s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+        if (s && s.token && typeof s.ts === 'number' && Date.now() - s.ts < SESSION_TTL &&
+            String(s.email || '').toLowerCase().slice(-(DOMAIN.length + 1)) === '@' + DOMAIN) return s;
+        if (s) localStorage.removeItem(SESSION_KEY);
+      } catch (e) {}
+      return null;
+    }
+    function nonce() {
+      var b = new Uint8Array(16); crypto.getRandomValues(b);
+      return Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    }
+    function signIn() {
+      var n = nonce();
+      try { localStorage.setItem(NONCE_KEY, n); localStorage.setItem(RETURN_KEY, location.pathname + location.search); }
+      catch (e) { toast('Sign-in needs site storage — try a regular (non-private) window.'); return; }
+      location.assign(BROKER + '?return=' + encodeURIComponent(location.origin + '/auth-callback/') + '&nonce=' + encodeURIComponent(n));
+    }
+    function signOut() {
+      try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+      state.session = null; show('gate');
+    }
+
+    // ── API ─────────────────────────────────────────────
+    function api(action, extra) {
+      var body = Object.assign({ action: action, auth: state.session && state.session.token }, extra || {});
+      return fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (!res.ok && res.code === 'auth') { signOut(); throw new Error(res.error); }
+          if (!res.ok && res.code === 'forbidden') { blocked('Admins only', res.error + ' Ask an existing admin to add you.'); throw new Error(res.error); }
+          if (!res.ok && res.code === 'config') { blocked('Not set up yet', res.error); throw new Error(res.error); }
+          if (!res.ok) throw new Error(res.error || 'Request failed.');
+          return res;
+        });
+    }
+
+    // ── screens ─────────────────────────────────────────
+    function show(id) {
+      ['gate', 'blocked', 'loading', 'app'].forEach(function (s) { $(s).classList.toggle('hidden', s !== id); });
+      $('who').classList.toggle('hidden', !state.session || id === 'gate');
+    }
+    function blocked(title, msg) { $('blockedTitle').textContent = title; $('blockedMsg').textContent = msg; show('blocked'); }
+    var toastTimer;
+    function toast(msg) {
+      var t = $('toast'); t.textContent = msg; t.classList.add('show');
+      clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3200);
+    }
+
+    // ── formatting ──────────────────────────────────────
+    function fmt(iso, withTime) {
+      if (!iso) return '';
+      var d = new Date(iso);
+      return d.toLocaleString('en-SG', Object.assign({ timeZone: 'Asia/Singapore', day: 'numeric', month: 'short', year: 'numeric' },
+        withTime ? { hour: 'numeric', minute: '2-digit' } : {}));
+    }
+    function rel(iso) {
+      var ms = new Date(iso) - Date.now(), day = 864e5, d = Math.round(Math.abs(ms) / day);
+      if (Math.abs(ms) < day) { var h = Math.max(1, Math.round(Math.abs(ms) / 36e5)); return ms > 0 ? 'in ' + h + ' h' : h + ' h ago'; }
+      return ms > 0 ? 'in ' + d + ' day' + (d === 1 ? '' : 's') : d + ' day' + (d === 1 ? '' : 's') + ' ago';
+    }
+    function chip(st) { return '<span class="chip st-' + st + '">' + LABEL[st] + '</span>'; }
+    function who(email) { return email ? String(email).split('@')[0] : ''; }
+    function holder(p) {
+      if (p.state === 'USED') return esc(p.visitorName) + '<div class="sub">' + esc(p.accountEmail) + '</div>';
+      if (p.state === 'ACTIVE') return (p.givenTo ? esc(p.givenTo) : '<span class="sub">—</span>') +
+        '<div class="sub">by ' + esc(who(p.activatedBy)) + ' · lapses ' + rel(p.activeUntil) + '</div>';
+      if (p.state === 'REVOKED') return '<span class="sub">revoked by ' + esc(who(p.revokedBy)) + '</span>';
+      if (p.lapsed) return '<span class="sub">activation lapsed</span>';
+      return '<span class="sub">—</span>';
+    }
+
+    // ── code input ──────────────────────────────────────
+    /** "ahlv kyf5x3ay", "KY5F-X3AY", a scanned URL … → "AHLV-KY5F-X3AY" (or '' if not 8 chars). */
+    function normCode(raw) {
+      var s = String(raw || '').toUpperCase();
+      var m = s.match(/TOKEN=([A-Z0-9-]+)/); if (m) s = m[1];
+      s = s.replace(/[^A-Z0-9]/g, '');
+      if (s.indexOf('AHLV') === 0) s = s.slice(4);
+      return s.length === 8 ? 'AHLV-' + s.slice(0, 4) + '-' + s.slice(4) : '';
+    }
+    $('codeInput').addEventListener('input', function (e) {
+      var v = e.target.value;
+      if (/[/?=]/.test(v) || v.replace(/[^A-Za-z0-9]/g, '').length > 8) {   // pasted full code / URL
+        var c = normCode(v); if (c) { e.target.value = c.slice(5); return; }
+      }
+      var s = v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+      e.target.value = s.length > 4 ? s.slice(0, 4) + '-' + s.slice(4) : s;
+    });
+    $('lookupForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var code = normCode($('codeInput').value);
+      if (!code) { renderLookupMsg('err', 'A pass code has 8 characters after AHLV-, e.g. KY5F-X3AY.'); return; }
+      lookup(code);
+    });
+
+    function renderLookupMsg(kind, html) {
+      var el = $('lookup'); el.classList.remove('hidden');
+      el.innerHTML = '<div class="msg ' + kind + '">' + html + '</div>';
+    }
+
+    function lookup(code) {
+      var el = $('lookup'); el.classList.remove('hidden');
+      el.innerHTML = '<p class="hint"><i class="fa-solid fa-circle-notch spin"></i> Looking up ' + esc(code) + '…</p>';
+      api('get', { code: code }).then(function (res) { renderLookup(res.pass); upsert(res.pass); })
+        .catch(function (err) { renderLookupMsg('err', esc(err.message)); });
+    }
+
+    /** The Activate panel's result card for one pass. */
+    function renderLookup(p, note) {
+      var el = $('lookup'); el.classList.remove('hidden');
+      var h = '<div class="head"><span class="code">' + esc(p.code) + '</span>' + chip(p.state) + '</div>';
+      if (p.state === 'INACTIVE') {
+        h += '<p class="facts">' + (p.lapsed ? 'An earlier activation lapsed unclaimed. ' : '') +
+             'Valid until ' + fmt(p.expiresAt) + '. Activating gives the holder ' + (state.data ? state.data.activationDays : 7) +
+             ' days to claim their account.</p>' +
+             '<label class="field-label" for="givenTo">Given to <span style="font-weight:400;color:var(--n70)">(optional)</span></label>' +
+             '<input class="text-input" id="givenTo" maxlength="80" placeholder="e.g. Jane Doe, NUS visiting student" />' +
+             '<div class="actions"><button class="btn btn-primary" id="actBtn" type="button"><i class="fa-solid fa-bolt"></i>Activate pass</button></div>';
+      } else if (p.state === 'ACTIVE') {
+        h += '<p class="facts">Activated by ' + esc(p.activatedBy) + (p.givenTo ? ' for <strong>' + esc(p.givenTo) + '</strong>' : '') +
+             ' · ' + fmt(p.activatedAt, true) + '. Lapses ' + rel(p.activeUntil) + ' if unclaimed.</p>' +
+             '<div class="actions"><button class="btn btn-secondary btn-sm" data-open="' + esc(p.code) + '" type="button">Details</button></div>';
+      } else if (p.state === 'USED') {
+        h += '<p class="facts">Claimed by <strong>' + esc(p.visitorName) + '</strong> → ' + esc(p.accountEmail) + ' · ' + fmt(p.usedAt, true) + '.</p>';
+      } else if (p.state === 'REVOKED') {
+        h += '<p class="facts">Revoked by ' + esc(p.revokedBy) + ' · ' + fmt(p.revokedAt, true) + '. It can\'t be used.</p>';
+      } else if (p.state === 'EXPIRED') {
+        h += '<p class="facts">Expired ' + fmt(p.expiresAt) + '. Extend it from the pass details to use it again.</p>' +
+             '<div class="actions"><button class="btn btn-secondary btn-sm" data-open="' + esc(p.code) + '" type="button">Details</button></div>';
+      }
+      if (note) h += '<div class="msg ok">' + note + '</div>';
+      el.innerHTML = h;
+      var btn = $('actBtn');
+      if (btn) {
+        $('givenTo').focus();
+        btn.addEventListener('click', function () {
+          btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Activating…';
+          api('activate', { code: p.code, givenTo: $('givenTo').value }).then(function (res) {
+            upsert(res.pass);
+            renderLookup(res.pass, '<i class="fa-solid fa-check"></i> Activated — hand the card over. It works until ' + fmt(res.pass.activeUntil, true) + '.');
+            $('codeInput').value = '';
+          }).catch(function (err) {
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-bolt"></i>Activate pass';
+            toast(err.message);
+          });
+        });
+      }
+    }
+
+    // ── data + list ─────────────────────────────────────
+    function load() {
+      return api('list').then(function (res) {
+        state.data = res;
+        $('perSheet').textContent = '8';
+        renderAll();
+      });
+    }
+    function upsert(p) {
+      if (!state.data) return;
+      var i = state.data.passes.findIndex(function (x) { return x.code === p.code; });
+      if (i === -1) state.data.passes.push(p); else state.data.passes[i] = p;
+      recount(); renderAll();
+      if (state.open === p.code) openDrawer(p.code);
+    }
+    function recount() {
+      var c = {}; STATES.forEach(function (s) { c[s] = 0; });
+      state.data.passes.forEach(function (p) { c[p.state]++; });
+      state.data.counts = c;
+    }
+
+    function renderAll() { renderStats(); renderBatches(); renderRows(); }
+
+    function renderStats() {
+      $('stats').innerHTML = STATES.map(function (s) {
+        return '<button class="stat' + (state.filter.state === s ? ' on' : '') + '" data-state="' + s + '" type="button">' +
+               '<div class="n">' + (state.data.counts[s] || 0) + '</div>' +
+               '<div class="l"><span class="dot st-' + s + '"></span>' + LABEL[s] + '</div></button>';
+      }).join('');
+    }
+
+    function renderBatches() {
+      var sel = $('batchSelect'), cur = state.filter.batch, seen = {}, batches = [];
+      state.data.passes.forEach(function (p) { if (p.batch && !seen[p.batch]) { seen[p.batch] = 1; batches.push(p.batch); } });
+      batches.sort().reverse();
+      sel.innerHTML = '<option value="">All batches</option>' + batches.map(function (b) {
+        return '<option value="' + esc(b) + '"' + (b === cur ? ' selected' : '') + '>' + esc(b) + '</option>';
+      }).join('');
+      $('printBatchBtn').disabled = !cur;
+    }
+
+    function filtered() {
+      var f = state.filter, q = f.q.toLowerCase();
+      return state.data.passes.filter(function (p) {
+        if (f.state !== 'ALL' && p.state !== f.state) return false;
+        if (f.batch && p.batch !== f.batch) return false;
+        if (q) {
+          var hay = [p.code, p.givenTo, p.visitorName, p.visitorEmail, p.accountEmail, p.activatedBy, p.batch].join(' ').toLowerCase();
+          if (hay.indexOf(q) === -1 && hay.replace(/-/g, '').indexOf(q.replace(/-/g, '')) === -1) return false;
+        }
+        return true;
+      }).sort(function (a, b) { return (b.createdAt || '').localeCompare(a.createdAt || '') || a.code.localeCompare(b.code); });
+    }
+
+    function renderRows() {
+      var rows = filtered();
+      $('countNote').textContent = rows.length + ' of ' + state.data.passes.length;
+      if (!rows.length) { $('rows').innerHTML = '<tr><td colspan="5" class="empty">No passes match.</td></tr>'; return; }
+      $('rows').innerHTML = rows.map(function (p) {
+        return '<tr data-open="' + esc(p.code) + '"><td class="code">' + esc(p.code) + '</td><td>' + chip(p.state) + '</td>' +
+               '<td>' + holder(p) + '</td><td class="col-batch"><span class="sub">' + esc(p.batch) + '</span></td>' +
+               '<td class="col-expires"><span class="sub">' + fmt(p.expiresAt) + '</span></td></tr>';
+      }).join('');
+    }
+
+    $('stats').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-state]'); if (!b) return;
+      state.filter.state = state.filter.state === b.dataset.state ? 'ALL' : b.dataset.state;
+      $('stateSelect').value = state.filter.state; renderStats(); renderRows();
+    });
+    $('stateSelect').addEventListener('change', function (e) { state.filter.state = e.target.value; renderStats(); renderRows(); });
+    $('batchSelect').addEventListener('change', function (e) { state.filter.batch = e.target.value; $('printBatchBtn').disabled = !e.target.value; renderRows(); });
+    $('searchInput').addEventListener('input', function (e) { state.filter.q = e.target.value.trim(); renderRows(); });
+    document.addEventListener('click', function (e) {
+      var o = e.target.closest('[data-open]'); if (o) openDrawer(o.dataset.open);
+    });
+    $('printBatchBtn').addEventListener('click', function () { if (state.filter.batch) openPrint(state.filter.batch); });
+    $('refreshLink').addEventListener('click', function (e) { e.preventDefault(); load().then(function () { toast('Refreshed'); }); });
+
+    function openPrint(batch) { window.open('/print.html?batch=' + encodeURIComponent(batch), '_blank'); }
+
+    // ── new sheet ───────────────────────────────────────
+    var sheetArmed = false;
+    $('newSheetBtn').addEventListener('click', function () {
+      var btn = $('newSheetBtn');
+      if (!sheetArmed) {   // two-step confirm, no browser dialogs
+        sheetArmed = true; btn.innerHTML = '<i class="fa-solid fa-check"></i>Create 8 passes?';
+        setTimeout(function () { if (sheetArmed) { sheetArmed = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New sheet'; } }, 4000);
+        return;
+      }
+      sheetArmed = false; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Creating…';
+      api('newSheet').then(function (res) {
+        res.passes.forEach(function (p) { state.data.passes.push(p); });
+        recount(); state.filter.batch = res.batch; renderAll();
+        toast('8 new passes created — opening the print view');
+        openPrint(res.batch);
+      }).catch(function (err) { toast(err.message); })
+        .then(function () { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New sheet'; });
+    });
+
+    // ── drawer ──────────────────────────────────────────
+    function find(code) { return state.data && state.data.passes.find(function (p) { return p.code === code; }); }
+    function openDrawer(code) {
+      var p = find(code); if (!p) return;
+      state.open = code;
+      $('dCode').textContent = p.code;
+      $('dChip').className = 'chip st-' + p.state; $('dChip').textContent = LABEL[p.state];
+      var t = [];
+      t.push(['', 'Created', fmt(p.createdAt, true) + (p.batch ? ' · batch ' + esc(p.batch) : '')]);
+      if (p.activatedAt) t.push(['k-active', 'Activated by ' + esc(p.activatedBy) + (p.givenTo ? ' for <strong>' + esc(p.givenTo) + '</strong>' : ''),
+        fmt(p.activatedAt, true) + (p.state === 'ACTIVE' ? ' · lapses ' + rel(p.activeUntil) : p.lapsed ? ' · lapsed unclaimed' : '')]);
+      if (p.usedAt && p.state === 'USED') t.push(['k-used', 'Claimed by <strong>' + esc(p.visitorName) + '</strong>',
+        fmt(p.usedAt, true) + '<br>' + esc(p.visitorEmail) + ' → <strong>' + esc(p.accountEmail) + '</strong>']);
+      if (p.revokedAt) t.push(['k-revoked', 'Revoked by ' + esc(p.revokedBy), fmt(p.revokedAt, true)]);
+      t.push([p.state === 'EXPIRED' ? 'k-expired' : '', p.state === 'EXPIRED' ? 'Expired' : 'Expires', fmt(p.expiresAt)]);
+
+      var h = '<h3>History</h3><ul class="timeline">' + t.map(function (x) {
+        return '<li class="' + x[0] + '">' + x[1] + '<div class="when">' + x[2] + '</div></li>';
+      }).join('') + '</ul>';
+
+      var acts = [];
+      if (p.state === 'INACTIVE') acts.push('<button class="btn btn-primary btn-sm" data-act="lookup" type="button"><i class="fa-solid fa-bolt"></i>Activate…</button>');
+      if (p.state === 'ACTIVE')   acts.push('<button class="btn btn-secondary btn-sm" data-act="deactivate" type="button"><i class="fa-solid fa-power-off"></i>Deactivate</button>');
+      if (p.state === 'INACTIVE' || p.state === 'ACTIVE' || p.state === 'EXPIRED')
+        acts.push('<button class="btn btn-secondary btn-sm" data-act="extend" type="button" title="Set expiry to one year from today"><i class="fa-solid fa-calendar-plus"></i>Extend 1 year</button>');
+      if (p.state !== 'USED' && p.state !== 'REVOKED')
+        acts.push('<button class="btn btn-danger btn-sm" data-act="revoke" type="button"><i class="fa-solid fa-ban"></i>Revoke</button>');
+      if (p.batch && p.state !== 'USED' && p.state !== 'REVOKED' && p.state !== 'EXPIRED')
+        acts.push('<button class="btn btn-secondary btn-sm" data-act="print" type="button"><i class="fa-solid fa-print"></i>Print its batch</button>');
+      if (acts.length) h += '<h3>Actions</h3><div class="actions">' + acts.join('') + '</div>';
+      if (p.state === 'USED') h += '<p class="hint">To remove this guest account, delete ' + esc(p.accountEmail) + ' in the Google Admin console.</p>';
+      $('dBody').innerHTML = h;
+      $('drawer').classList.add('open'); $('scrim').classList.add('open'); $('drawer').setAttribute('aria-hidden', 'false');
+    }
+    function closeDrawer() {
+      state.open = null; $('drawer').classList.remove('open'); $('scrim').classList.remove('open'); $('drawer').setAttribute('aria-hidden', 'true');
+    }
+    $('dClose').addEventListener('click', closeDrawer);
+    $('scrim').addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDrawer(); });
+
+    var revokeArmed = false;
+    $('dBody').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]'); if (!b) return;
+      var p = find(state.open), act = b.dataset.act;
+      if (act === 'lookup') { closeDrawer(); $('codeInput').value = p.code.slice(5); renderLookup(p); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+      if (act === 'print') { openPrint(p.batch); return; }
+      if (act === 'revoke' && !revokeArmed) {
+        revokeArmed = true; b.classList.add('confirm'); b.innerHTML = '<i class="fa-solid fa-ban"></i>Confirm revoke';
+        setTimeout(function () { revokeArmed = false; if (b.isConnected) { b.classList.remove('confirm'); b.innerHTML = '<i class="fa-solid fa-ban"></i>Revoke'; } }, 4000);
+        return;
+      }
+      revokeArmed = false;
+      b.disabled = true; b.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>';
+      api(act, { code: p.code }).then(function (res) {
+        upsert(res.pass);
+        toast({ deactivate: 'Deactivated', extend: 'Extended to ' + fmt(res.pass.expiresAt), revoke: 'Revoked' }[act]);
+      }).catch(function (err) { toast(err.message); openDrawer(p.code); });
+    });
+
+    // ── QR scanner (mobile) ─────────────────────────────
+    var stream = null, scanning = false, detector = null, jsqrLoading = null;
+    function loadJsQR() {
+      if (window.jsQR) return Promise.resolve();
+      if (!jsqrLoading) jsqrLoading = new Promise(function (res, rej) {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+      return jsqrLoading;
+    }
+    function startScan() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('This browser can\'t open the camera — type the code instead.'); return; }
+      $('scanner').classList.remove('hidden'); $('scanStatus').textContent = 'Starting camera…';
+      var ready = ('BarcodeDetector' in window)
+        ? BarcodeDetector.getSupportedFormats().then(function (f) { if (f.indexOf('qr_code') !== -1) detector = new BarcodeDetector({ formats: ['qr_code'] }); else return loadJsQR(); })
+        : loadJsQR();
+      Promise.all([ready, navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })])
+        .then(function (r) {
+          stream = r[1]; var v = $('scanVideo'); v.srcObject = stream; return v.play();
+        }).then(function () {
+          $('scanStatus').textContent = 'Point at the QR on the card\'s back'; scanning = true; tick();
+        }).catch(function (err) {
+          stopScan(); toast(err && err.name === 'NotAllowedError' ? 'Camera permission was denied.' : 'Couldn\'t start the camera.');
+        });
+    }
+    var canvas = document.createElement('canvas'), ctx2d = canvas.getContext('2d', { willReadFrequently: true });
+    function tick() {
+      if (!scanning) return;
+      var v = $('scanVideo');
+      if (v.readyState >= 2) {
+        if (detector) {
+          detector.detect(v).then(function (codes) { if (codes.length) found(codes[0].rawValue); else requestAnimationFrame(tick); })
+            .catch(function () { requestAnimationFrame(tick); });
+          return;
+        }
+        var w = v.videoWidth, h = v.videoHeight, s = Math.min(1, 720 / Math.max(w, h));
+        canvas.width = w * s; canvas.height = h * s; ctx2d.drawImage(v, 0, 0, canvas.width, canvas.height);
+        var img = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
+        var q = window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+        if (q && q.data) { found(q.data); return; }
+      }
+      requestAnimationFrame(tick);
+    }
+    function found(text) {
+      var code = normCode(text);
+      if (!code) { $('scanStatus').textContent = 'That QR isn\'t a Visitor Pass — try again'; requestAnimationFrame(tick); return; }
+      if (navigator.vibrate) navigator.vibrate(60);
+      stopScan(); $('codeInput').value = code.slice(5); lookup(code);
+    }
+    function stopScan() {
+      scanning = false;
+      if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+      stream = null; $('scanner').classList.add('hidden');
+    }
+    $('scanBtn').addEventListener('click', startScan);
+    $('scanClose').addEventListener('click', stopScan);
+
+    // ── boot ────────────────────────────────────────────
+    $('signInBtn').addEventListener('click', signIn);
+    $('signOutBtn').addEventListener('click', signOut);
+    $('blockedSignOut').addEventListener('click', function () { signOut(); signIn(); });
+
+    state.session = getSession();
+    if (!state.session) { show('gate'); return; }
+    $('whoEmail').textContent = state.session.email;
+    if (state.session.picture) $('whoPic').src = state.session.picture; else $('whoPic').classList.add('hidden');
+    show('loading');
+    load().then(function () {
+      show('app');
+      var q = new URLSearchParams(location.search).get('code');   // deep link: /?code=AHLV-…
+      if (q && normCode(q)) { $('codeInput').value = normCode(q).slice(5); lookup(normCode(q)); }
+    }).catch(function (err) {
+      if ($('gate').classList.contains('hidden') && $('blocked').classList.contains('hidden')) blocked('Something went wrong', err.message);
+    });
+  })();
+  </script>
+</body>
+</html>
