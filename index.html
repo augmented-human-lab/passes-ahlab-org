@@ -125,33 +125,22 @@
     .btn-sm { padding: 7px 14px; font-size: 13.5px; }
 
     /* ── panels ─────────────────────────────────────── */
-    .grid-top { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
-    @media (max-width: 820px) { .grid-top { grid-template-columns: 1fr; } }
+    .summary { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .summary .stats { flex: 1 1 520px; }
     .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
     .panel h2 { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--n80);
                 margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
     .panel h2 i { color: var(--accent); }
 
     /* activate */
-    .code-row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
-    .code-field { flex: 1 1 220px; display: flex; align-items: center; border: 1.5px solid var(--line-2); border-radius: 999px;
-                  background: #fff; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
-    .code-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(97,0,255,.12); }
-    .code-field .prefix { padding: 0 4px 0 18px; color: var(--n70); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-                          font-size: 17px; letter-spacing: .06em; user-select: none; }
-    .code-field input { flex: 1; min-width: 0; border: none; outline: none; padding: 12px 12px 12px 0;
-                        font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; letter-spacing: .08em;
-                        text-transform: uppercase; background: transparent; }
-    .code-field input::placeholder { color: #C5CDD5; letter-spacing: .08em; }
     .scan-only { display: none; }
-    .scan-text { display: none; }
-    @media (pointer: coarse) { .scan-only { display: inline-flex; } .scan-text { display: inline; } }
+    @media (pointer: coarse) { .scan-only { display: inline-flex; } }
+    td.col-act { text-align: right; white-space: nowrap; width: 1%; }
+    .btn-act { padding: 6px 14px; font-size: 13px; }
+    tr.flash td { animation: flash 1.6s ease-out; }
+    @keyframes flash { from { background: #EEE7FF; } to { background: transparent; } }
     .hint { color: var(--n70); font-size: 13px; margin-top: 10px; }
 
-    .lookup { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px; }
-    .lookup .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-    .lookup .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; font-weight: 600; letter-spacing: .05em; }
-    .lookup .facts { color: var(--n80); font-size: 14px; margin-bottom: 12px; }
     .field-label { font-size: 13px; font-weight: 600; margin: 4px 0 6px; display: block; }
     .text-input { width: 100%; border: 1.5px solid var(--line-2); border-radius: 10px; padding: 10px 12px; font-size: 15px; outline: none;
                   transition: border-color .15s, box-shadow .15s; }
@@ -172,7 +161,7 @@
     .stat .n { font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .stat .l { font-size: 12px; color: var(--n80); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
-    .new-sheet { margin-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .new-sheet { flex: 0 1 300px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
     .new-sheet p { color: var(--n80); font-size: 13.5px; max-width: 34ch; }
 
     /* chips */
@@ -208,6 +197,7 @@
       tbody tr { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; padding: 10px 12px; }
       td { border: none; padding: 2px 0; }
       td.col-batch, td.col-expires { display: none; }
+      td.col-act { text-align: left; width: auto; padding-top: 8px; }
     }
 
     /* drawer */
@@ -304,35 +294,19 @@
 
     <!-- console -->
     <section class="hidden" id="app">
-      <div class="grid-top">
-        <div class="panel">
-          <h2><i class="fa-solid fa-bolt"></i>Activate a pass</h2>
-          <form class="code-row" id="lookupForm" autocomplete="off">
-            <label class="code-field">
-              <span class="prefix">AHLV-</span>
-              <input id="codeInput" inputmode="text" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX" maxlength="40" aria-label="Pass code" />
-            </label>
-            <button class="btn btn-primary" type="submit" id="lookupBtn"><i class="fa-solid fa-magnifying-glass"></i>Find</button>
-            <button class="btn btn-secondary scan-only" type="button" id="scanBtn"><i class="fa-solid fa-qrcode"></i>Scan</button>
-          </form>
-          <p class="hint">Type the code printed under the QR on the card's back<span class="scan-text"> — or tap <strong>Scan</strong> to read the QR</span>.</p>
-          <div class="lookup hidden" id="lookup"></div>
-        </div>
-
-        <div class="panel">
-          <h2><i class="fa-solid fa-chart-simple"></i>All passes</h2>
-          <div class="stats" id="stats"></div>
-          <div class="new-sheet">
-            <p>Need more cards? A new passes set adds <strong id="perSheet">8</strong> inactive passes, ready to print.</p>
-            <button class="btn btn-secondary" id="newSheetBtn" type="button"><i class="fa-solid fa-plus"></i>New passes set</button>
-          </div>
+      <div class="panel summary">
+        <div class="stats" id="stats"></div>
+        <div class="new-sheet">
+          <p>Need more cards? A new passes set adds <strong id="perSheet">8</strong> inactive passes, ready to print.</p>
+          <button class="btn btn-secondary" id="newSheetBtn" type="button"><i class="fa-solid fa-plus"></i>New passes set</button>
         </div>
       </div>
 
       <div class="panel">
         <div class="list-tools">
           <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
-            <input class="text-input" id="searchInput" placeholder="Search code, name, email…" /></div>
+            <input class="text-input" id="searchInput" placeholder="Search or type a pass code…" autocapitalize="characters" spellcheck="false" /></div>
+          <button class="btn btn-secondary scan-only" type="button" id="scanBtn"><i class="fa-solid fa-qrcode"></i>Scan</button>
           <select id="stateSelect" aria-label="Status">
             <option value="ALL">All statuses</option>
             <option value="INACTIVE">Inactive</option>
@@ -346,7 +320,7 @@
           <span class="count-note" id="countNote"></span>
         </div>
         <table>
-          <thead><tr><th>Code</th><th>Status</th><th>Holder</th><th class="col-batch">Batch</th><th class="col-expires">Expires</th></tr></thead>
+          <thead><tr><th>Code</th><th>Status</th><th>Holder</th><th class="col-batch">Batch</th><th class="col-expires">Expires</th><th class="col-act"></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
       </div>
@@ -482,73 +456,6 @@
       if (s.indexOf('AHLV') === 0) s = s.slice(4);
       return s.length === 8 ? 'AHLV-' + s.slice(0, 4) + '-' + s.slice(4) : '';
     }
-    $('codeInput').addEventListener('input', function (e) {
-      var v = e.target.value;
-      if (/[/?=]/.test(v) || v.replace(/[^A-Za-z0-9]/g, '').length > 8) {   // pasted full code / URL
-        var c = normCode(v); if (c) { e.target.value = c.slice(5); return; }
-      }
-      var s = v.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
-      e.target.value = s.length > 4 ? s.slice(0, 4) + '-' + s.slice(4) : s;
-    });
-    $('lookupForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      var code = normCode($('codeInput').value);
-      if (!code) { renderLookupMsg('err', 'A pass code has 8 characters after AHLV-, e.g. KY5F-X3AY.'); return; }
-      lookup(code);
-    });
-
-    function renderLookupMsg(kind, html) {
-      var el = $('lookup'); el.classList.remove('hidden');
-      el.innerHTML = '<div class="msg ' + kind + '">' + html + '</div>';
-    }
-
-    function lookup(code) {
-      var el = $('lookup'); el.classList.remove('hidden');
-      el.innerHTML = '<p class="hint"><i class="fa-solid fa-circle-notch spin"></i> Looking up ' + esc(code) + '…</p>';
-      api('get', { code: code }).then(function (res) { renderLookup(res.pass); upsert(res.pass); })
-        .catch(function (err) { renderLookupMsg('err', esc(err.message)); });
-    }
-
-    /** The Activate panel's result card for one pass. */
-    function renderLookup(p, note) {
-      var el = $('lookup'); el.classList.remove('hidden');
-      var h = '<div class="head"><span class="code">' + esc(p.code) + copyBtn(p.code) + '</span>' + chip(p.state) + '</div>';
-      if (p.state === 'INACTIVE') {
-        h += '<p class="facts">' + (p.lapsed ? 'An earlier activation lapsed unclaimed. ' : '') +
-             'Valid until ' + fmt(p.expiresAt) + '. Activating gives the holder ' + (state.data ? state.data.activationDays : 7) +
-             ' days to claim their account.</p>' +
-             '<div class="actions"><button class="btn btn-primary" id="actBtn" type="button"><i class="fa-solid fa-bolt"></i>Activate pass</button></div>';
-      } else if (p.state === 'ACTIVE') {
-        h += '<p class="facts">Activated by ' + esc(p.activatedBy) + (p.givenTo ? ' for <strong>' + esc(p.givenTo) + '</strong>' : '') +
-             ' · ' + fmt(p.activatedAt, true) + '. Lapses ' + rel(p.activeUntil) + ' if unclaimed.</p>' +
-             '<div class="actions"><button class="btn btn-secondary btn-sm" data-open="' + esc(p.code) + '" type="button">Details</button></div>';
-      } else if (p.state === 'USED') {
-        h += '<p class="facts">Claimed by <strong>' + esc(p.visitorName) + '</strong> → ' + esc(p.accountEmail) + ' · ' + fmt(p.usedAt, true) + '.</p>';
-      } else if (p.state === 'REVOKED') {
-        h += '<p class="facts">Revoked by ' + esc(p.revokedBy) + ' · ' + fmt(p.revokedAt, true) + '. It can\'t be used.</p>';
-      } else if (p.state === 'EXPIRED') {
-        h += '<p class="facts">Expired ' + fmt(p.expiresAt) + '. Extend it from the pass details to use it again.</p>' +
-             '<div class="actions"><button class="btn btn-secondary btn-sm" data-open="' + esc(p.code) + '" type="button">Details</button></div>';
-      }
-      if (note) h += '<div class="msg ok">' + note + '</div>';
-      el.innerHTML = h;
-      var btn = $('actBtn');
-      if (btn) {
-        btn.focus();
-        btn.addEventListener('click', function () {
-          btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Activating…';
-          api('activate', { code: p.code }).then(function (res) {
-            upsert(res.pass);
-            renderLookup(res.pass, '<i class="fa-solid fa-check"></i> Activated — hand the card over. It works until ' + fmt(res.pass.activeUntil, true) + '.');
-            $('codeInput').value = '';
-          }).catch(function (err) {
-            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-bolt"></i>Activate pass';
-            toast(err.message);
-          });
-        });
-      }
-    }
-
     // ── data + list ─────────────────────────────────────
     function load() {
       return api('list').then(function (res) {
@@ -603,14 +510,24 @@
       }).sort(function (a, b) { return (b.createdAt || '').localeCompare(a.createdAt || '') || a.code.localeCompare(b.code); });
     }
 
+    /** Inline action for a row: Activate (inactive / revoked) or Revoke (active). */
+    function rowAction(p) {
+      if (p.state === 'INACTIVE' || p.state === 'REVOKED')
+        return '<button class="btn btn-primary btn-act" data-row-act="activate" data-code="' + esc(p.code) + '" type="button"><i class="fa-solid fa-bolt"></i>Activate</button>';
+      if (p.state === 'ACTIVE')
+        return '<button class="btn btn-danger btn-act" data-row-act="revoke" data-code="' + esc(p.code) + '" type="button"><i class="fa-solid fa-ban"></i>Revoke</button>';
+      return '';
+    }
+
     function renderRows() {
       var rows = filtered();
       $('countNote').textContent = rows.length + ' of ' + state.data.passes.length;
-      if (!rows.length) { $('rows').innerHTML = '<tr><td colspan="5" class="empty">No passes match.</td></tr>'; return; }
+      if (!rows.length) { $('rows').innerHTML = '<tr><td colspan="6" class="empty">No passes match.</td></tr>'; return; }
       $('rows').innerHTML = rows.map(function (p) {
         return '<tr data-open="' + esc(p.code) + '"><td class="code">' + esc(p.code) + copyBtn(p.code) + '</td><td>' + chip(p.state) + '</td>' +
                '<td>' + holder(p) + '</td><td class="col-batch"><span class="sub">' + esc(p.batch) + '</span></td>' +
-               '<td class="col-expires"><span class="sub">' + fmt(p.expiresAt) + '</span></td></tr>';
+               '<td class="col-expires"><span class="sub">' + fmt(p.expiresAt) + '</span></td>' +
+               '<td class="col-act">' + rowAction(p) + '</td></tr>';
       }).join('');
     }
 
@@ -621,12 +538,43 @@
     });
     $('stateSelect').addEventListener('change', function (e) { state.filter.state = e.target.value; renderStats(); renderRows(); });
     $('batchSelect').addEventListener('change', function (e) { state.filter.batch = e.target.value; $('printBatchBtn').disabled = !e.target.value; renderRows(); });
-    $('searchInput').addEventListener('input', function (e) { state.filter.q = e.target.value.trim(); renderRows(); });
+    $('searchInput').addEventListener('input', function (e) {
+      var v = e.target.value.trim(), c = normCode(v);
+      if (c && /[/?=]/.test(v)) { e.target.value = c; v = c; }   // pasted QR link → its code
+      state.filter.q = v; renderRows();
+    });
+    /** Show one pass in the list (clears other filters) and flash its row. */
+    function focusCode(code) {
+      state.filter = { state: 'ALL', q: code, batch: '' };
+      $('searchInput').value = code; $('stateSelect').value = 'ALL';
+      renderAll();
+      var row = document.querySelector('tr[data-open="' + code + '"]');
+      if (row) { row.classList.add('flash'); row.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      else toast('No pass with code ' + code);
+    }
     document.addEventListener('click', function (e) {
       var c = e.target.closest('[data-copy]');
       if (c) { copyCode(c); return; }   // don't also open the row
+      var ra = e.target.closest('[data-row-act]');
+      if (ra) { rowAct(ra); return; }
       var o = e.target.closest('[data-open]'); if (o) openDrawer(o.dataset.open);
     });
+    var armed = null;   // revoke needs a second click within 4 s
+    function rowAct(btn) {
+      var act = btn.dataset.rowAct, code = btn.dataset.code;
+      if (act === 'revoke' && armed !== btn) {
+        armed = btn; btn.classList.add('confirm'); btn.innerHTML = '<i class="fa-solid fa-ban"></i>Confirm';
+        setTimeout(function () { if (armed === btn) { armed = null; if (btn.isConnected) { btn.classList.remove('confirm'); btn.innerHTML = '<i class="fa-solid fa-ban"></i>Revoke'; } } }, 4000);
+        return;
+      }
+      armed = null;
+      btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>';
+      api(act, { code: code }).then(function (res) {
+        upsert(res.pass);
+        toast(act === 'activate' ? code + ' activated — works until ' + fmt(res.pass.activeUntil, true) : code + ' revoked');
+      }).catch(function (err) { toast(err.message); renderRows(); });
+    }
+
     function copyCode(btn) {
       var code = btn.dataset.copy;
       var done = function () {
@@ -691,7 +639,7 @@
       }).join('') + '</ul>';
 
       var acts = [];
-      if (p.state === 'INACTIVE') acts.push('<button class="btn btn-primary btn-sm" data-act="lookup" type="button"><i class="fa-solid fa-bolt"></i>Activate…</button>');
+      if (p.state === 'INACTIVE' || p.state === 'REVOKED') acts.push('<button class="btn btn-primary btn-sm" data-act="activate" type="button"><i class="fa-solid fa-bolt"></i>Activate</button>');
       if (p.state === 'ACTIVE')   acts.push('<button class="btn btn-secondary btn-sm" data-act="deactivate" type="button"><i class="fa-solid fa-power-off"></i>Deactivate</button>');
       if (p.state === 'INACTIVE' || p.state === 'ACTIVE' || p.state === 'EXPIRED')
         acts.push('<button class="btn btn-secondary btn-sm" data-act="extend" type="button" title="Set expiry to one year from today"><i class="fa-solid fa-calendar-plus"></i>Extend 1 year</button>');
@@ -715,7 +663,6 @@
     $('dBody').addEventListener('click', function (e) {
       var b = e.target.closest('[data-act]'); if (!b) return;
       var p = find(state.open), act = b.dataset.act;
-      if (act === 'lookup') { closeDrawer(); $('codeInput').value = p.code.slice(5); renderLookup(p); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
       if (act === 'print') { openPrint(p.batch); return; }
       if (act === 'revoke' && !revokeArmed) {
         revokeArmed = true; b.classList.add('confirm'); b.innerHTML = '<i class="fa-solid fa-ban"></i>Confirm revoke';
@@ -726,7 +673,8 @@
       b.disabled = true; b.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>';
       api(act, { code: p.code }).then(function (res) {
         upsert(res.pass);
-        toast({ deactivate: 'Deactivated', extend: 'Extended to ' + fmt(res.pass.expiresAt), revoke: 'Revoked' }[act]);
+        toast({ activate: 'Activated — works until ' + fmt(res.pass.activeUntil, true), deactivate: 'Deactivated',
+                extend: 'Extended to ' + fmt(res.pass.expiresAt), revoke: 'Revoked' }[act]);
       }).catch(function (err) { toast(err.message); openDrawer(p.code); });
     });
 
@@ -778,7 +726,7 @@
       var code = normCode(text);
       if (!code) { $('scanStatus').textContent = 'That QR isn\'t a Visitor Pass — try again'; requestAnimationFrame(tick); return; }
       if (navigator.vibrate) navigator.vibrate(60);
-      stopScan(); $('codeInput').value = code.slice(5); lookup(code);
+      stopScan(); focusCode(code);
     }
     function stopScan() {
       scanning = false;
@@ -820,7 +768,7 @@
     load().then(function () {
       show('app');
       var q = new URLSearchParams(location.search).get('code');   // deep link: /?code=AHLV-…
-      if (q && normCode(q)) { $('codeInput').value = normCode(q).slice(5); lookup(normCode(q)); }
+      if (q && normCode(q)) focusCode(normCode(q));
     }).catch(function (err) {
       if ($('gate').classList.contains('hidden') && $('blocked').classList.contains('hidden')) blocked('Something went wrong', err.message);
     });
