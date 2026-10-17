@@ -345,7 +345,7 @@
           <tbody id="rows"></tbody>
         </table>
       </div>
-      <footer>Augmented Human Lab · Visitor Passes console · <a href="#" id="refreshLink" style="color:inherit">Refresh</a></footer>
+      <footer>Augmented Human Lab · Visitor Passes console</footer>
     </section>
   </main>
 
@@ -612,7 +612,6 @@
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, legacy);
       else legacy();
     }
-    $('refreshLink').addEventListener('click', function (e) { e.preventDefault(); load().then(function () { toast('Refreshed'); }); });
 
     function printUrl(batch) { return '/print.html?batch=' + encodeURIComponent(batch); }
     function openPrint(batch) { window.open(printUrl(batch), '_blank'); }

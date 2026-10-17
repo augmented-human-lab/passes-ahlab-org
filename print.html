@@ -169,6 +169,18 @@
     }
 
     /* crop marks (print): thin ticks aligned to the cut lines, outside the bleed */
+    /* pass code + status, printed in the gap ABOVE each card (outside the slot = card + bleed);
+       the ▼ points down at the card it belongs to */
+    .slot-status {
+      position: absolute; height: 3.4mm; line-height: 3.4mm; text-align: center; white-space: nowrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 5.6pt; letter-spacing: .04em;
+      color: #5E6875; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .slot-status b { font-family: var(--font-text); font-weight: 700; letter-spacing: .08em; }
+    .slot-status.st-ACTIVE b { color: #0A7A3E; }
+    .slot-status.st-INACTIVE b { color: #5E6875; }
+    .slot-status .arrow { font-size: 5pt; margin-right: .8mm; }
+
     .crop {
       position: absolute;
       background: #8a9299;
@@ -412,6 +424,17 @@
       return slot;
     }
 
+    // Label sits 1.2–4.6 mm above the slot's top edge: the gap between rows is 6 mm, so it
+    // clears this card's bleed and the card above by ≥ 0.8 mm. Centred, so it never meets
+    // the crop marks at the cut-line x positions.
+    function addStatus(sheet, x, y, t) {
+      if (!t.state) return;
+      var lab = el('div', 'slot-status st-' + t.state, sheet);
+      lab.style.left = mm(x + 12); lab.style.width = mm(SLOT_W - 24);
+      lab.style.top = mm(y - 4.6);
+      lab.innerHTML = '<span class="arrow">▼</span>' + t.token + ' · <b>' + t.state + '</b>';
+    }
+
     function buildFront(slot) {
       var face = el('div', 'face-front', slot);
       ['r3', 'r2', 'r1'].forEach(function (c) { el('div', 'ring ' + c, face); });
@@ -477,6 +500,7 @@
       group.forEach(function (t, i) {
         var r = Math.floor(i / COLS.length), c = i % COLS.length;
         buildFront(makeSlot(front, COLS[c], ROWS[r], false));
+        addStatus(front, COLS[c], ROWS[r], t);
       });
       addRegMarks(front);   // front only: it's the side facing the cutter's camera
       el('div', 'sheet-label', front).textContent =
@@ -488,6 +512,7 @@
         var r = Math.floor(i / COLS.length), c = i % COLS.length;
         var mc = COLS.length - 1 - c;
         buildBack(makeSlot(back, COLS[mc], ROWS[r], true), t.token, t.validTo);
+        addStatus(back, COLS[mc], ROWS[r], t);
       });
       el('div', 'sheet-label', back).textContent =
         'AHL visitor cards — sheet ' + (s + 1) + '/' + sheetCount + ' — BACK (mirrored) — cut at crop marks, round corners 3.18 mm';
@@ -610,7 +635,7 @@
         }).sort(function (a, b) { return a.code.localeCompare(b.code); }).map(function (p) {
           var d = new Date(p.expiresAt);
           var mmyyyy = d.toLocaleDateString('en-GB', { timeZone: 'Asia/Singapore', month: '2-digit', year: 'numeric' });
-          return { token: p.code, batch: p.batch, validTo: p.expiresAt ? mmyyyy : '' };
+          return { token: p.code, batch: p.batch, validTo: p.expiresAt ? mmyyyy : '', state: p.state };
         });
         if (!tokens.length) { fail('This batch has no printable (inactive or active) passes.'); return; }
         document.title = 'Print · ' + batch + ' — Visitor Passes';
