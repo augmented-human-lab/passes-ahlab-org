@@ -161,8 +161,7 @@
     .stat .n { font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .stat .l { font-size: 12px; color: var(--n80); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
-    .new-sheet { flex: 0 1 300px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
-    .new-sheet p { color: var(--n80); font-size: 13.5px; max-width: 34ch; }
+    .new-sheet { flex: 0 0 auto; display: flex; align-items: center; }
 
     /* chips */
     .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em;
@@ -297,8 +296,7 @@
       <div class="panel summary">
         <div class="stats" id="stats"></div>
         <div class="new-sheet">
-          <p>Need more cards? A new passes set adds <strong id="perSheet">8</strong> inactive passes, ready to print.</p>
-          <button class="btn btn-secondary" id="newSheetBtn" type="button"><i class="fa-solid fa-plus"></i>New passes set</button>
+          <button class="btn btn-secondary" id="newSheetBtn" type="button"><i class="fa-solid fa-plus"></i>New passes set (set of 8)</button>
         </div>
       </div>
 
@@ -460,7 +458,6 @@
     function load() {
       return api('list').then(function (res) {
         state.data = res;
-        $('perSheet').textContent = '8';
         renderAll();
       });
     }
@@ -604,7 +601,7 @@
       var btn = $('newSheetBtn');
       if (!sheetArmed) {   // two-step confirm, no browser dialogs
         sheetArmed = true; btn.innerHTML = '<i class="fa-solid fa-check"></i>Create 8 passes?';
-        setTimeout(function () { if (sheetArmed) { sheetArmed = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set'; } }, 4000);
+        setTimeout(function () { if (sheetArmed) { sheetArmed = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set (set of 8)'; } }, 4000);
         return;
       }
       sheetArmed = false; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Creating…';
@@ -614,7 +611,7 @@
         toast('8 new passes created — opening the print view');
         openPrint(res.batch);
       }).catch(function (err) { toast(err.message); })
-        .then(function () { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set'; });
+        .then(function () { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set (set of 8)'; });
     });
 
     // ── drawer ──────────────────────────────────────────
