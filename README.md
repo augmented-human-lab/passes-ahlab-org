@@ -13,7 +13,9 @@ Admin console for AHL **Visitor Passes**, the printed credit-card cards that giv
 - **Track every pass:** inactive, active, used, revoked and expired, with search, a
   per-batch filter and a history for each pass (created → activated by → claimed → revoked), and a copy button next to each code.
 - **New passes set:** creates 8 inactive passes and opens the print view (Print, Download PDF,
-  or the PLT cut-line file with cutter registration marks). **Print batch** reprints any batch.
+  or the PLT cut-line file with cutter registration marks).
+- **Passes sets:** every set created so far, newest first, with its card counts and an
+  **Open print sheet** button (prints its still-usable passes) plus **Show passes**.
 - **Deactivate, extend, revoke or re-activate** a pass from its details (click the row).
 
 Printed passes start **inactive**. Scanning one before it's activated shows "Pass Not

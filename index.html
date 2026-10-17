@@ -115,6 +115,7 @@
            padding: 11px 20px; font-weight: 600; font-size: 15px; border: 1px solid transparent;
            transition: box-shadow .15s, background .15s, border-color .15s, opacity .15s; white-space: nowrap; }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
+    a.btn { text-decoration: none; }
     .btn-primary { background: var(--grad) border-box; border-color: transparent; color: #fff; box-shadow: 0 4px 14px rgba(97,0,255,.22); }
     .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 22px rgba(97,0,255,.34); }
     .btn-secondary { background: #fff; color: var(--ink); border-color: var(--line-2); }
@@ -163,6 +164,20 @@
     .stat .l { font-size: 12px; color: var(--n80); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
     .new-sheet { flex: 0 0 auto; display: flex; align-items: center; }
+
+    /* passes sets */
+    .sets { margin-bottom: 16px; padding-bottom: 8px; }
+    .sets-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .sets-head h2 { margin-bottom: 8px; }
+    .link-btn { background: none; border: none; color: var(--accent); font-weight: 600; font-size: 13.5px; padding: 4px 6px; border-radius: 6px; }
+    .link-btn:hover { background: var(--bg); }
+    .set-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+    .set-row:first-child { border-top: none; }
+    .set-row .what { flex: 1 1 240px; min-width: 0; }
+    .set-row .what strong { font-size: 15px; }
+    .set-row .what .sub { color: var(--n70); font-size: 13px; }
+    .set-row .acts { display: flex; gap: 8px; }
+    .set-row.on { background: linear-gradient(90deg, rgba(97,0,255,.05), transparent); }
 
     /* chips */
     .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em;
@@ -301,6 +316,14 @@
         </div>
       </div>
 
+      <div class="panel sets">
+        <div class="sets-head">
+          <h2><i class="fa-solid fa-layer-group"></i>Passes sets</h2>
+          <button class="link-btn hidden" id="setsMore" type="button"></button>
+        </div>
+        <div id="sets"></div>
+      </div>
+
       <div class="panel">
         <div class="list-tools">
           <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
@@ -315,7 +338,6 @@
             <option value="EXPIRED">Expired</option>
           </select>
           <select id="batchSelect" aria-label="Batch"><option value="">All batches</option></select>
-          <button class="btn btn-secondary btn-sm" id="printBatchBtn" type="button" title="Print the unused passes in this batch"><i class="fa-solid fa-print"></i>Print batch</button>
           <span class="count-note" id="countNote"></span>
         </div>
         <table>
@@ -475,7 +497,7 @@
       state.data.counts = c;
     }
 
-    function renderAll() { renderStats(); renderBatches(); renderRows(); }
+    function renderAll() { renderStats(); renderSets(); renderBatches(); renderRows(); }
 
     function renderStats() {
       $('stats').innerHTML = STATES.map(function (s) {
@@ -492,7 +514,6 @@
       sel.innerHTML = '<option value="">All batches</option>' + batches.map(function (b) {
         return '<option value="' + esc(b) + '"' + (b === cur ? ' selected' : '') + '>' + esc(b) + '</option>';
       }).join('');
-      $('printBatchBtn').disabled = !cur;
     }
 
     function filtered() {
@@ -535,7 +556,7 @@
       $('stateSelect').value = state.filter.state; renderStats(); renderRows();
     });
     $('stateSelect').addEventListener('change', function (e) { state.filter.state = e.target.value; renderStats(); renderRows(); });
-    $('batchSelect').addEventListener('change', function (e) { state.filter.batch = e.target.value; $('printBatchBtn').disabled = !e.target.value; renderRows(); });
+    $('batchSelect').addEventListener('change', function (e) { state.filter.batch = e.target.value; renderSets(); renderRows(); });
     $('searchInput').addEventListener('input', function (e) {
       var v = e.target.value.trim(), c = normCode(v);
       if (c && /[/?=]/.test(v)) { e.target.value = c; v = c; }   // pasted QR link → its code
@@ -591,10 +612,54 @@
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, legacy);
       else legacy();
     }
-    $('printBatchBtn').addEventListener('click', function () { if (state.filter.batch) openPrint(state.filter.batch); });
     $('refreshLink').addEventListener('click', function (e) { e.preventDefault(); load().then(function () { toast('Refreshed'); }); });
 
-    function openPrint(batch) { window.open('/print.html?batch=' + encodeURIComponent(batch), '_blank'); }
+    function printUrl(batch) { return '/print.html?batch=' + encodeURIComponent(batch); }
+    function openPrint(batch) { window.open(printUrl(batch), '_blank'); }
+
+    // ── passes sets (one per batch) ─────────────────────
+    var setsAll = false, SETS_SHOWN = 4;
+    function batchesSummary() {
+      var by = {};
+      state.data.passes.forEach(function (p) {
+        if (!p.batch) return;
+        var b = by[p.batch] || (by[p.batch] = { batch: p.batch, total: 0, printable: 0, used: 0, createdAt: '' });
+        b.total++;
+        if (p.state === 'INACTIVE' || p.state === 'ACTIVE') b.printable++;
+        if (p.state === 'USED') b.used++;
+        if ((p.createdAt || '') > b.createdAt) b.createdAt = p.createdAt || '';
+      });
+      return Object.keys(by).map(function (k) { return by[k]; })
+        .sort(function (a, b) { return b.createdAt.localeCompare(a.createdAt) || b.batch.localeCompare(a.batch); });
+    }
+    function renderSets() {
+      var list = batchesSummary(), shown = setsAll ? list : list.slice(0, SETS_SHOWN);
+      $('sets').innerHTML = list.length ? shown.map(function (b) {
+        var by = (b.batch.split(' · ')[1] || '');
+        return '<div class="set-row' + (state.filter.batch === b.batch ? ' on' : '') + '">' +
+          '<div class="what"><strong>' + esc(fmt(b.createdAt, true) || b.batch) + '</strong>' +
+          '<div class="sub">' + (by ? 'by ' + esc(by) + ' · ' : '') + b.total + ' card' + (b.total === 1 ? '' : 's') +
+          ' · ' + b.printable + ' printable' + (b.used ? ' · ' + b.used + ' used' : '') + '</div></div>' +
+          '<div class="acts">' +
+          '<button class="btn btn-secondary btn-sm" data-set-show="' + esc(b.batch) + '" type="button"><i class="fa-solid fa-list"></i>' +
+            (state.filter.batch === b.batch ? 'Showing' : 'Show passes') + '</button>' +
+          '<a class="btn btn-primary btn-sm" href="' + printUrl(b.batch) + '" target="_blank" rel="noopener"' +
+            (b.printable ? '' : ' aria-disabled="true" style="opacity:.45;pointer-events:none"') +
+            '><i class="fa-solid fa-print"></i>Open print sheet</a>' +
+          '</div></div>';
+      }).join('') : '<p class="hint" style="margin:6px 0 10px">No sets yet — create one with <strong>New passes set</strong>.</p>';
+      var more = $('setsMore');
+      more.classList.toggle('hidden', list.length <= SETS_SHOWN);
+      more.textContent = setsAll ? 'Show fewer' : 'Show all (' + list.length + ')';
+    }
+    $('setsMore').addEventListener('click', function () { setsAll = !setsAll; renderSets(); });
+    $('sets').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-set-show]'); if (!b) return;
+      var batch = b.dataset.setShow;
+      state.filter.batch = state.filter.batch === batch ? '' : batch;
+      renderSets(); renderBatches(); renderRows();
+      if (state.filter.batch) document.querySelector('.list-tools').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 
     // ── new passes set ───────────────────────────────────
     var sheetArmed = false;
@@ -606,12 +671,15 @@
         return;
       }
       sheetArmed = false; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Creating…';
+      // Open the tab inside the click (an async window.open is pop-up-blocked), then point it at the set.
+      var tab = window.open('about:blank', '_blank');
+      if (tab) { try { tab.document.title = 'Creating passes…'; tab.document.body.innerHTML = '<p style="font:15px system-ui;padding:24px;color:#5E6875">Creating 8 new passes…</p>'; } catch (e) {} }
       api('newSheet').then(function (res) {
         res.passes.forEach(function (p) { state.data.passes.push(p); });
         recount(); state.filter.batch = res.batch; renderAll();
-        toast('8 new passes created — opening the print view');
-        openPrint(res.batch);
-      }).catch(function (err) { toast(err.message); })
+        if (tab) { tab.location.href = printUrl(res.batch); toast('8 new passes created — print sheet opened in a new tab'); }
+        else toast('8 new passes created — open its print sheet under Passes sets');
+      }).catch(function (err) { if (tab) tab.close(); toast(err.message); })
         .then(function () { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set (set of 8)'; });
     });
 
