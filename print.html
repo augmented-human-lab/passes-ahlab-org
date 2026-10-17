@@ -348,8 +348,11 @@
           <button type="button" role="menuitem" data-format="pdf">
             <strong>PDF</strong><small>Print-ready card sheets</small>
           </button>
+          <button type="button" role="menuitem" data-format="plt-preview">
+            <strong>PLT (Preview)</strong><small>Cut lines + marks as a PDF, to check</small>
+          </button>
           <button type="button" role="menuitem" data-format="plt">
-            <strong>PLT</strong><small>Cut lines for the plotter</small>
+            <strong>PLT</strong><small>Cutter file (.plt) for the flatbed cutter</small>
           </button>
         </div>
       </div>
@@ -543,7 +546,8 @@
       item.addEventListener('click', function (e) {
         e.stopPropagation();
         setMenu(false);
-        run(item.getAttribute('data-format') === 'plt' ? downloadCutLines : downloadPdf);
+        var f = item.getAttribute('data-format');
+        run(f === 'plt' ? downloadPlt : f === 'plt-preview' ? downloadCutLines : downloadPdf);
       });
     });
 
@@ -582,7 +586,65 @@
       });
     }
 
-    // PLT: for now a vector PDF with the 4 registration marks + the cut paths — one rounded
+    // ── PLT for the sclab flatbed print-and-cut cutter ───────────────────
+    // Same format as flatbed-cutter-control (Kerf) app/lib/hpgl.js, decoded from working
+    // SignMaster files: TB25,<bedW>,<bedH>;CT1; + 1025 spaces + IN; then one PU/PD per
+    // point, then PU<bedW+200>,200;PG;  — 40 units/mm, bed 277 × 190 mm, origin
+    // bottom-left, Y up. Portrait A4 is rotated 90° (Kerf's convention) and centred on
+    // the bed, which puts the 4 registration dots on the bed corners:
+    //   X = (287 − y)·40,  Y = (200 − x)·40      (x, y = A4 mm, Y down)
+    var PLT = { unitsPerMm: 40, bedW: 11080, bedH: 7600, tb: 25, tool: 1, pad: 1025, arcSegs: 12, radius: 3.18 };
+    function a4ToBed(x, y) {
+      return [Math.round((287 - y) * PLT.unitsPerMm), Math.round((200 - x) * PLT.unitsPerMm)];
+    }
+    /** Closed rounded-rectangle outline (A4 mm, Y down), corners flattened into arcSegs segments. */
+    function roundedRectPath(x, y, w, h, rad) {
+      var pts = [], n = PLT.arcSegs;
+      function arc(cx, cy, a0) {
+        for (var i = 0; i <= n; i++) {
+          var t = (a0 + 90 * i / n) * Math.PI / 180;
+          pts.push([cx + rad * Math.cos(t), cy + rad * Math.sin(t)]);
+        }
+      }
+      arc(x + w - rad, y + rad, -90);      // top-right
+      arc(x + w - rad, y + h - rad, 0);    // bottom-right
+      arc(x + rad, y + h - rad, 90);       // bottom-left
+      arc(x + rad, y + rad, 180);          // top-left
+      pts.push(pts[0]);                    // close
+      return pts;
+    }
+    function sheetPlt(s) {
+      var out = ['TB' + PLT.tb + ',' + PLT.bedW + ',' + PLT.bedH + ';CT' + PLT.tool + ';', new Array(PLT.pad + 1).join(' '), 'IN;'];
+      var n = Math.min(PER_SHEET, TOKENS.length - s * PER_SHEET);
+      for (var i = 0; i < n; i++) {
+        var r = Math.floor(i / COLS.length), c = i % COLS.length;   // FRONT-sheet position (printed side up)
+        var path = roundedRectPath(COLS[c] + BLEED, ROWS[r] + BLEED, CARD_W, CARD_H, PLT.radius);
+        path.forEach(function (pt, k) {
+          var b = a4ToBed(pt[0], pt[1]);
+          out.push((k === 0 ? 'PU' : 'PD') + b[0] + ',' + b[1] + ';');
+        });
+      }
+      out.push('PU' + (PLT.bedW + 200) + ',200;', 'PG;\r\n');
+      return out.join('');   // one continuous line + CRLF, byte-for-byte like SignMaster's files
+    }
+    window.sheetPlt = sheetPlt;   // exposed for testing
+    function downloadPlt() {
+      var files = [];
+      for (var s = 0; s < sheetCount; s++) {
+        files.push({ name: 'ahl-visitor-cards-' + BATCH + (sheetCount > 1 ? '-sheet' + (s + 1) : '') + '.plt', text: sheetPlt(s) });
+      }
+      return files.reduce(function (chain, f, i) {
+        return chain.then(function () {
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(new Blob([f.text], { type: 'application/octet-stream' }));
+          a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+          return new Promise(function (res) { setTimeout(res, i < files.length - 1 ? 600 : 0); });
+        });
+      }, Promise.resolve());
+    }
+
+    // PLT (Preview): a vector PDF with the 4 registration marks + the cut paths — one rounded
     // rectangle (ID-1, r 3.18 mm) per card at its FRONT-sheet position,
     // one page per sheet. Later this becomes a real HP-GL .plt file.
     function downloadCutLines() {

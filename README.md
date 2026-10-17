@@ -13,7 +13,8 @@ Admin console for AHL **Visitor Passes**, the printed credit-card cards that giv
 - **Track every pass:** inactive, active, used, revoked and expired, with search, a
   per-batch filter and a history for each pass (created → activated by → claimed → revoked), and a copy button next to each code.
 - **New passes set:** creates 8 inactive passes and opens the print view (Print, Download PDF,
-  or the PLT cut-line file with cutter registration marks).
+  **PLT (Preview)**: a PDF of just the cut lines + registration marks to check, or **PLT**: the
+  real `.plt` cutter file, one per A4 sheet).
 - **Passes sets:** every set created so far, newest first, with its card counts and an
   **Open print sheet** button (prints its still-usable passes) plus **Show passes**.
 - **Deactivate, extend, revoke or re-activate** a pass from its details (click the row).
@@ -55,3 +56,17 @@ against the dev backend deployment.
 
 `og-image.png` is rendered from `og-card.html` (command in that file). Icons: `icon.svg` →
 `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`.
+
+## The PLT cutter file
+
+`print.html` → `sheetPlt()` writes the same HPGL dialect as the sclab flatbed cutter's Kerf
+app (`flatbed-cutter-control/app/lib/hpgl.js`), decoded from SignMaster's working files:
+`TB25,11080,7600;CT1;` + 1025 spaces + `IN;`, one `PU`/`PD` per point, `PU11280,200;PG;` + CRLF.
+40 units/mm, bed 277 × 190 mm, origin bottom-left, Y up. Portrait A4 is rotated 90° and
+centred, which puts the four registration dots on the bed corners:
+`X = (287 − y)·40`, `Y = (200 − x)·40` (A4 mm, Y down). Output is identical, point for point,
+to running the same outlines through Kerf's own generator.
+
+Unverified on the machine: the direction of that 90° turn (the SignMaster samples were all
+symmetric). A full 8-card sheet is symmetric, so it cuts correctly either way; check a
+part-filled sheet before relying on it.
