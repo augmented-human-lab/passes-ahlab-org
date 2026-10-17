@@ -163,7 +163,16 @@
     .stat .n { font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .stat .l { font-size: 12px; color: var(--n80); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
-    .new-sheet { flex: 0 0 auto; display: flex; align-items: center; }
+    /* fixed width: the button's label changes (confirm / creating…) but the tiles never resize */
+    .new-sheet { flex: 0 0 260px; display: flex; align-items: center; }
+    .new-sheet .btn { width: 100%; }
+    @media (max-width: 600px) { .new-sheet { flex-basis: 100%; } }
+    /* armed "Create 8 passes?" — a slow brand-gradient sweep (colour only, no movement) */
+    .btn.confirming { color: #fff; border-color: transparent;
+      background: linear-gradient(90deg, #6100FF, #00C4E6, #6100FF) border-box; background-size: 200% 100%;
+      animation: sweep 1.6s linear infinite; box-shadow: 0 4px 18px rgba(97,0,255,.32); }
+    @keyframes sweep { from { background-position: 0% 0; } to { background-position: -200% 0; } }
+    @media (prefers-reduced-motion: reduce) { .btn.confirming { animation: none; background: var(--grad) border-box; } }
 
     /* passes sets */
     .sets { margin-bottom: 16px; padding-bottom: 8px; }
@@ -660,19 +669,38 @@
       if (state.filter.batch) document.querySelector('.list-tools').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
+    // Shown in the print tab while the new set is being created (the tab must open inside
+    // the click to dodge pop-up blockers; it then navigates to the set's print sheet).
+    var LOADING_PAGE = '<!doctype html><html><head><meta charset="utf-8"><title>Creating passes… — Visitor Passes</title>' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1"><style>' +
+      'html,body{margin:0;height:100%}' +
+      'body{display:grid;place-items:center;background:#3D00CC;background-image:linear-gradient(221deg,#00C4E6 0%,#3D00CC 58%,#6100FF 100%);' +
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:#fff;text-align:center}' +
+      '.ring{width:132px;height:132px;border-radius:50%;margin:0 auto 26px;position:relative;display:grid;place-items:center}' +
+      '.ring::before{content:"";position:absolute;inset:0;border-radius:50%;padding:3px;' +
+      'background:conic-gradient(from 0deg,rgba(255,255,255,0) 0deg,rgba(255,255,255,.95) 300deg,rgba(255,255,255,0) 360deg);' +
+      '-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;' +
+      'animation:spin 1.1s linear infinite}' +
+      '.ring img{width:62px;height:62px;object-fit:cover;object-position:left center;animation:pulse 1.6s ease-in-out infinite}' +
+      'h1{font-size:20px;font-weight:600;margin:0 0 6px}p{margin:0;opacity:.85;font-size:14px}' +
+      '@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}' +
+      '@media (prefers-reduced-motion:reduce){.ring::before,.ring img{animation:none}}' +
+      '</style></head><body><div><div class="ring"><img src="https://cdn.ahlab.org/media/site/ahllogo_white.png" alt=""></div>' +
+      '<h1>Creating 8 new passes…</h1><p>The print sheet opens here in a moment.</p></div></body></html>';
+
     // ── new passes set ───────────────────────────────────
     var sheetArmed = false;
     $('newSheetBtn').addEventListener('click', function () {
       var btn = $('newSheetBtn');
       if (!sheetArmed) {   // two-step confirm, no browser dialogs
-        sheetArmed = true; btn.innerHTML = '<i class="fa-solid fa-check"></i>Create 8 passes?';
-        setTimeout(function () { if (sheetArmed) { sheetArmed = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set (set of 8)'; } }, 4000);
+        sheetArmed = true; btn.classList.add('confirming'); btn.innerHTML = '<i class="fa-solid fa-check"></i>Create 8 passes?';
+        setTimeout(function () { if (sheetArmed) { sheetArmed = false; btn.classList.remove('confirming'); btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set (set of 8)'; } }, 4000);
         return;
       }
-      sheetArmed = false; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Creating…';
+      sheetArmed = false; btn.classList.remove('confirming'); btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Creating…';
       // Open the tab inside the click (an async window.open is pop-up-blocked), then point it at the set.
       var tab = window.open('about:blank', '_blank');
-      if (tab) { try { tab.document.title = 'Creating passes…'; tab.document.body.innerHTML = '<p style="font:15px system-ui;padding:24px;color:#5E6875">Creating 8 new passes…</p>'; } catch (e) {} }
+      if (tab) { try { tab.document.write(LOADING_PAGE); tab.document.close(); } catch (e) {} }
       api('newSheet').then(function (res) {
         res.passes.forEach(function (p) { state.data.passes.push(p); });
         recount(); state.filter.batch = res.batch; renderAll();
