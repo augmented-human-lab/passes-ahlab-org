@@ -62,14 +62,33 @@
     .appbar-inner { max-width: 1080px; margin: 0 auto; padding: 14px 16px; display: flex; align-items: center; gap: 14px; }
     .appbar img.logo { height: 30px; width: auto; display: block; }
     .appbar .title { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin-right: auto; white-space: nowrap; }
-    .appbar .who { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-    .appbar .who img { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,.6); object-fit: cover; }
-    .appbar .who .email { opacity: .9; }
+    /* account menu */
+    .who { position: relative; }
+    .who-btn { display: flex; align-items: center; gap: 9px; background: rgba(255,255,255,.12); color: #fff;
+               border: 1px solid rgba(255,255,255,.24); border-radius: 999px; padding: 3px 12px 3px 3px; font-size: 14px;
+               font-weight: 600; transition: background .15s; max-width: 260px; }
+    .who-btn:hover, .who.open .who-btn { background: rgba(255,255,255,.22); }
+    .avatar { width: 30px; height: 30px; border-radius: 50%; flex: none; object-fit: cover; background: rgba(255,255,255,.25);
+              display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; }
+    .who-btn .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .who-btn .caret { font-size: 11px; opacity: .85; transition: transform .15s; }
+    .who.open .who-btn .caret { transform: rotate(180deg); }
+    .who-menu { display: none; position: absolute; right: 0; top: calc(100% + 8px); min-width: 230px; background: #fff;
+                color: var(--ink); border-radius: 12px; box-shadow: 0 12px 34px rgba(14,15,17,.22); padding: 6px; z-index: 50; }
+    .who.open .who-menu { display: block; }
+    .who-menu .acct { padding: 10px 12px 10px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+    .who-menu .acct strong { display: block; font-size: 14px; }
+    .who-menu .acct span { display: block; font-size: 13px; color: var(--n70); word-break: break-all; }
+    .who-menu button { width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: none;
+                       border-radius: 8px; padding: 9px 12px; font-size: 14px; text-align: left; color: var(--ink); }
+    .who-menu button:hover { background: var(--bg); }
+    .who-menu button i { color: var(--n70); width: 16px; }
     @media (max-width: 600px) {
       .appbar-inner { gap: 10px; }
       .appbar img.logo { height: 26px; }
       .appbar .title { font-size: 15px; }
-      .appbar .who .email { display: none; }
+      .who-btn { padding-right: 9px; }
+      .who-btn .name { display: none; }
     }
     .btn-ghost { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.28);
                  border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; transition: background .15s; }
@@ -248,9 +267,15 @@
       <img class="logo" src="https://cdn.ahlab.org/media/site/ahllogo_white.png" alt="Augmented Human Lab" />
       <div class="title">Visitor Passes</div>
       <div class="who hidden" id="who">
-        <img id="whoPic" alt="" />
-        <span class="email" id="whoEmail"></span>
-        <button class="btn-ghost" id="signOutBtn" type="button">Sign out</button>
+        <button class="who-btn" id="whoBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="avatar" id="whoAvatar"></span>
+          <span class="name" id="whoName"></span>
+          <i class="fa-solid fa-chevron-down caret"></i>
+        </button>
+        <div class="who-menu" role="menu">
+          <div class="acct"><strong id="whoMenuName"></strong><span id="whoEmail"></span></div>
+          <button id="signOutBtn" type="button" role="menuitem"><i class="fa-solid fa-arrow-right-from-bracket"></i>Sign out</button>
+        </div>
       </div>
     </div>
   </header>
@@ -765,13 +790,32 @@
 
     // ── boot ────────────────────────────────────────────
     $('signInBtn').addEventListener('click', signIn);
-    $('signOutBtn').addEventListener('click', signOut);
+    $('signOutBtn').addEventListener('click', function () { setWho(false); signOut(); });
+    function setWho(open) { $('who').classList.toggle('open', open); $('whoBtn').setAttribute('aria-expanded', String(open)); }
+    $('whoBtn').addEventListener('click', function (e) { e.stopPropagation(); setWho(!$('who').classList.contains('open')); });
+    document.addEventListener('click', function (e) { if (!e.target.closest('#who')) setWho(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setWho(false); });
     $('blockedSignOut').addEventListener('click', function () { signOut(); signIn(); });
 
     state.session = getSession();
     if (!state.session) { show('gate'); return; }
+    var displayName = (state.session.name && state.session.name !== state.session.email) ? state.session.name
+                      : state.session.email.split('@')[0];
+    $('whoName').textContent = displayName;
+    $('whoMenuName').textContent = displayName;
     $('whoEmail').textContent = state.session.email;
-    if (state.session.picture) $('whoPic').src = state.session.picture; else $('whoPic').classList.add('hidden');
+    if (state.session.picture) {
+      var img = document.createElement('img');
+      img.className = 'avatar'; img.alt = ''; img.referrerPolicy = 'no-referrer'; img.src = state.session.picture;
+      img.onerror = function () { img.replaceWith(initialsEl()); };
+      $('whoAvatar').replaceWith(img); img.id = 'whoAvatar';
+    } else {
+      $('whoAvatar').textContent = initials(displayName);
+    }
+    function initials(n) {
+      return String(n).split(/[\s._-]+/).filter(Boolean).slice(0, 2).map(function (w) { return w.charAt(0).toUpperCase(); }).join('');
+    }
+    function initialsEl() { var sp = document.createElement('span'); sp.className = 'avatar'; sp.textContent = initials(displayName); return sp; }
     show('loading');
     load().then(function () {
       show('app');
