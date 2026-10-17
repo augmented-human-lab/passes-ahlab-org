@@ -115,10 +115,10 @@
 
     /* activate */
     .code-row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
-    .code-field { flex: 1 1 220px; display: flex; align-items: center; border: 1.5px solid var(--line-2); border-radius: 10px;
+    .code-field { flex: 1 1 220px; display: flex; align-items: center; border: 1.5px solid var(--line-2); border-radius: 999px;
                   background: #fff; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
     .code-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(97,0,255,.12); }
-    .code-field .prefix { padding: 0 4px 0 14px; color: var(--n70); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    .code-field .prefix { padding: 0 4px 0 18px; color: var(--n70); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
                           font-size: 17px; letter-spacing: .06em; user-select: none; }
     .code-field input { flex: 1; min-width: 0; border: none; outline: none; padding: 12px 12px 12px 0;
                         font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 17px; letter-spacing: .08em;
@@ -153,8 +153,7 @@
     .stat .n { font-size: 26px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
     .stat .l { font-size: 12px; color: var(--n80); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
-    .new-sheet { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-                 border-top: 1px solid var(--line); padding-top: 14px; }
+    .new-sheet { margin-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     .new-sheet p { color: var(--n80); font-size: 13.5px; max-width: 34ch; }
 
     /* chips */
