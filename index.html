@@ -85,18 +85,21 @@
     .screen h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
     .screen p { color: var(--n80); font-size: 15px; margin-bottom: 22px; }
 
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px;
-           padding: 11px 18px; font-weight: 600; font-size: 15px; border: 1px solid transparent;
+    /* Pill buttons, like the other AHL forms. background-origin: border-box keeps a gradient
+       from tiling into the (transparent) 1px border, which showed as stray edge slivers. */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 999px;
+           background-origin: border-box;
+           padding: 11px 20px; font-weight: 600; font-size: 15px; border: 1px solid transparent;
            transition: box-shadow .15s, background .15s, border-color .15s, opacity .15s; white-space: nowrap; }
     .btn:disabled { opacity: .5; cursor: not-allowed; }
-    .btn-primary { background: var(--grad); color: #fff; box-shadow: 0 4px 14px rgba(97,0,255,.22); }
+    .btn-primary { background: var(--grad) border-box; border-color: transparent; color: #fff; box-shadow: 0 4px 14px rgba(97,0,255,.22); }
     .btn-primary:hover:not(:disabled) { box-shadow: 0 6px 22px rgba(97,0,255,.34); }
     .btn-secondary { background: #fff; color: var(--ink); border-color: var(--line-2); }
     .btn-secondary:hover:not(:disabled) { background: #F7F9FA; border-color: #C5CDD5; }
     .btn-danger { background: #fff; color: var(--s-revoked); border-color: #F0C4CA; }
     .btn-danger:hover:not(:disabled) { background: var(--s-revoked-bg); }
     .btn-danger.confirm { background: var(--s-revoked); color: #fff; border-color: var(--s-revoked); }
-    .btn-sm { padding: 7px 12px; font-size: 13.5px; border-radius: 8px; }
+    .btn-sm { padding: 7px 14px; font-size: 13.5px; }
 
     /* ── panels ─────────────────────────────────────── */
     .grid-top { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
