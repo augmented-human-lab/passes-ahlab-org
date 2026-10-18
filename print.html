@@ -134,6 +134,14 @@
       font-size: 13.5px; color: #5E6875; line-height: 1.65;
     }
     .instructions strong { color: #0E0F11; }
+    /* collapsible (closed by default) */
+    .instructions summary { cursor: pointer; list-style: none; font-weight: 600; color: #0E0F11;
+                            display: flex; align-items: center; gap: 10px; user-select: none; }
+    .instructions summary::-webkit-details-marker { display: none; }
+    .instructions summary::before { content: ''; width: 0; height: 0; border-style: solid; border-width: 5px 0 5px 8px;
+                                    border-color: transparent transparent transparent #5E6875; transition: transform .15s; }
+    .instructions[open] summary::before { transform: rotate(90deg); }
+    .instructions p { margin-top: 8px; }
 
     /* ── Sheets ──────────────────────────────────────────── */
     .sheet {
@@ -371,13 +379,14 @@
       </div>
     </div>
   </div>
-  <div class="instructions">
-    <strong>Printing:</strong> A4, duplex, <strong>flip on long edge</strong>, scale <strong>100%</strong>
+  <details class="instructions">
+    <summary>Printing instructions</summary>
+    <p>A4, duplex, <strong>flip on long edge</strong>, scale <strong>100%</strong>
     (no "fit to page"), backgrounds/colour ON. Card stock 250–350 gsm recommended.
-    Cut on the crop marks — the dashed outline is screen-only. Corner-round with a 3.18&nbsp;mm punch
+    Cut on the crop marks. The dashed outline is screen-only. Corner-round with a 3.18&nbsp;mm punch
     for the true credit-card feel. Each sheet holds 8 cards; back sheets are column-mirrored so
-    fronts and backs line up after the duplex flip.
-  </div>
+    fronts and backs line up after the duplex flip.</p>
+  </details>
 
   <div id="sheets"></div>
   <script>
