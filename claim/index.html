@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Visitor Pass — Augmented Human Lab</title>
+  <meta name="description" content="Claim your Augmented Human Lab Visitor Pass: get an @ahlab.org guest account with access to the lab's Slack and calendar in about 30 seconds." />
+  <link rel="canonical" href="https://passes.ahlab.org/claim/" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="theme-color" content="#3D00CC" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Augmented Human Lab" />
+  <meta property="og:title" content="Your AHL Visitor Pass" />
+  <meta property="og:description" content="Scan your Visitor Pass to get an @ahlab.org guest account with the lab's Slack and calendar — it takes about 30 seconds." />
+  <meta property="og:url" content="https://passes.ahlab.org/claim/" />
+  <meta property="og:image" content="https://passes.ahlab.org/og-claim.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="An AHL Visitor Pass card next to the 'Welcome to the lab!' sign-up form." />
+  <meta property="og:locale" content="en_SG" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Your AHL Visitor Pass" />
+  <meta name="twitter:description" content="Scan your Visitor Pass to get an @ahlab.org guest account with the lab's Slack and calendar." />
+  <meta name="twitter:image" content="https://passes.ahlab.org/og-claim.png" />
+  <meta name="twitter:image:alt" content="An AHL Visitor Pass card next to the 'Welcome to the lab!' sign-up form." />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    @font-face {
+      font-family: "neue-haas-grotesk-display";
+      src: url("https://use.typekit.net/af/144886/00000000000000007735bb55/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n3&v=3") format("woff2");
+      font-display: swap; font-style: normal; font-weight: 300;
+    }
+    @font-face {
+      font-family: "neue-haas-grotesk-display";
+      src: url("https://use.typekit.net/af/1ba16c/00000000000000007735bb5a/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n5&v=3") format("woff2");
+      font-display: swap; font-style: normal; font-weight: 500;
+    }
+    @font-face {
+      font-family: "neue-haas-grotesk-display";
+      src: url("https://use.typekit.net/af/153042/00000000000000007735bb62/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n6&v=3") format("woff2");
+      font-display: swap; font-style: normal; font-weight: 600;
+    }
+    @font-face {
+      font-family: "neue-haas-grotesk-text";
+      src: url("https://use.typekit.net/af/0230dd/00000000000000007735bb33/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3") format("woff2");
+      font-display: swap; font-style: normal; font-weight: 400;
+    }
+    @font-face {
+      font-family: "neue-haas-grotesk-text";
+      src: url("https://use.typekit.net/af/160664/00000000000000007735bb32/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n5&v=3") format("woff2");
+      font-display: swap; font-style: normal; font-weight: 500;
+    }
+  </style>
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --color-accent:        #6100FF;
+      --color-accent-dark:   #4400B3;
+      --color-accent-light:  #904DFF;
+      --gradient-start:      #00D7EE;
+      --gradient-end:        #6100FF;
+      --gradient-primary:    linear-gradient(221deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+      --neutral-10:  #FFFFFF;
+      --neutral-20:  #F4F7F9;
+      --neutral-30:  #EDF0F3;
+      --neutral-40:  #C9D8E3;
+      --neutral-60:  #AAAFB6;
+      --neutral-70:  #838D95;
+      --neutral-80:  #5E6875;
+      --neutral-100: #0E0F11;
+      --color-error: #A8071A;
+      --color-success: #0A9B6A;
+      --font-display: "neue-haas-grotesk-display", sans-serif;
+      --font-text:    "neue-haas-grotesk-text", sans-serif;
+      --radius:    12px;
+      --radius-sm: 8px;
+      --ease-fast: 300ms ease;
+    }
+
+    body {
+      font-family: var(--font-text);
+      font-size: 16px; line-height: 24px;
+      background: var(--neutral-20);
+      color: var(--neutral-100);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── App Bar ─────────────────────────────── */
+    .appbar {
+      background: var(--gradient-primary);
+      padding: 14px 24px;
+      position: relative; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(14,15,17,.08);
+    }
+    .appbar::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 100% at 15% 50%, rgba(0,215,238,.25) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 100% at 85% 50%, rgba(97,0,255,.2)  0%, transparent 70%);
+      pointer-events: none;
+    }
+    .appbar-inner {
+      position: relative; z-index: 1;
+      max-width: 560px; margin: 0 auto;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .appbar .lab-logo { display: block; height: 36px; width: auto; filter: drop-shadow(0 1px 4px rgba(0,0,0,.18)); }
+    .appbar-title {
+      font-family: var(--font-display);
+      font-weight: 300; font-size: 17px;
+      letter-spacing: -0.01em; color: var(--neutral-10); line-height: 1.2;
+    }
+    .appbar-title strong { font-weight: 600; }
+
+    /* ── Main ────────────────────────────────── */
+    .main { max-width: 560px; margin: 32px auto 0; padding: 0 20px 80px; }
+
+    .form-card {
+      background: var(--neutral-10);
+      border: 1px solid var(--neutral-30);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 24px rgba(14,15,17,.06), 0 1px 3px rgba(14,15,17,.04);
+      overflow: hidden;
+    }
+    .section { padding: 36px 36px 32px; animation: fadeUp .35s ease-out both; }
+    @media (max-width: 560px) { .section { padding: 28px 22px 26px; } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+    .section-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font-display);
+      font-size: 12px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1.71px;
+      color: var(--color-accent); margin-bottom: 10px;
+    }
+    .section-label .icon {
+      width: 22px; height: 22px;
+      background: var(--gradient-primary); border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: var(--neutral-10); font-size: 11px;
+    }
+    .section h2 {
+      font-family: var(--font-display);
+      font-size: 24px; font-weight: 500; line-height: 29px;
+      margin-bottom: 6px;
+    }
+    .section .desc { font-size: 15px; color: var(--neutral-70); margin-bottom: 26px; line-height: 1.6; }
+
+    .token-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(97,0,255,.06);
+      border: 1px solid rgba(97,0,255,.18);
+      color: var(--color-accent);
+      border-radius: 999px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px; font-weight: 600;
+      padding: 6px 14px; margin-bottom: 22px;
+    }
+
+    .field { margin-bottom: 22px; }
+    .field label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+    .field label .req { color: var(--color-error); margin-left: 2px; }
+    .field label > i { color: var(--color-accent); margin-right: 7px; width: 16px; text-align: center; font-size: 13px; }
+    .field input[type="text"], .field input[type="email"] {
+      width: 100%; padding: 12px 16px;
+      background: var(--neutral-20);
+      border: 1.5px solid var(--neutral-30);
+      border-radius: var(--radius-sm);
+      color: var(--neutral-100);
+      font-family: var(--font-text); font-size: 15px; line-height: 24px;
+      outline: none;
+      transition: border-color var(--ease-fast), box-shadow var(--ease-fast), background var(--ease-fast);
+    }
+    .field input:hover { border-color: var(--neutral-40); }
+    .field input:focus {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(97,0,255,.1);
+      background: var(--neutral-10);
+    }
+    .field input::placeholder { color: var(--neutral-60); }
+    .field input:disabled {
+      background: var(--neutral-30);
+      color: var(--neutral-70);
+      cursor: not-allowed;
+    }
+    .field .hint { font-size: 13px; color: var(--neutral-60); margin-top: 6px; }
+    .field.error input { border-color: var(--color-error); box-shadow: 0 0 0 3px rgba(168,7,26,.08); }
+    .field .error-msg { font-size: 13px; color: var(--color-error); margin-top: 6px; display: none; }
+    .field.error .error-msg { display: block; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+
+    .note {
+      display: flex; gap: 12px;
+      background: rgba(199,119,0,.07);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px; margin: 4px 0 26px;
+      font-size: 13.5px; line-height: 1.55; color: #8a5a00;
+    }
+    .note i { color: #C77700; margin-top: 3px; }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--gradient-primary);
+      color: var(--neutral-10);
+      font-family: var(--font-display);
+      font-size: 16px; font-weight: 600;
+      border: none; border-radius: var(--radius-sm);
+      padding: 15px 24px; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(97,0,255,.25);
+      transition: box-shadow var(--ease-fast), opacity var(--ease-fast);
+    }
+    .btn-submit:hover:not(:disabled) { box-shadow: 0 6px 22px rgba(97,0,255,.32); }
+    .btn-submit:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+    .btn-submit.submitting:disabled { opacity: .7; cursor: wait; }
+
+    .form-error {
+      display: none;
+      background: rgba(168,7,26,.07);
+      border-radius: var(--radius-sm);
+      color: var(--color-error);
+      font-size: 14px; padding: 12px 16px; margin-bottom: 18px;
+    }
+    .form-error.visible { display: block; }
+
+    /* ── Success panel ───────────────────────── */
+    #successPanel { display: none; text-align: center; }
+    #successPanel.visible { display: block; }
+    .success-icon {
+      width: 72px; height: 72px; margin: 6px auto 20px;
+      background: var(--gradient-primary);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--neutral-10); font-size: 30px;
+      box-shadow: 0 6px 24px rgba(97,0,255,.3);
+    }
+    .account-pill {
+      display: inline-block;
+      background: rgba(97,0,255,.06);
+      border: 1px solid rgba(97,0,255,.18);
+      border-radius: var(--radius-sm);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 16px; font-weight: 600; color: var(--color-accent);
+      padding: 12px 22px; margin: 14px 0 20px;
+    }
+    /* ── Status / loading panels ──────────────── */
+    #statePanel, #loadingPanel { display: none; text-align: center; }
+    #statePanel.visible, #loadingPanel.visible { display: block; }
+    #formPanel { display: none; }
+    #formPanel.visible { display: block; }
+    .state-icon {
+      width: 72px; height: 72px; margin: 6px auto 20px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; font-size: 30px; color: #fff;
+      background: var(--gradient-primary); box-shadow: 0 6px 24px rgba(97,0,255,.25);
+    }
+    .state-icon.warn { background: linear-gradient(221deg, #FFB020 0%, #C77700 100%); box-shadow: 0 6px 24px rgba(199,119,0,.25); }
+    .state-icon.err  { background: linear-gradient(221deg, #E5484D 0%, #A8071A 100%); box-shadow: 0 6px 24px rgba(168,7,26,.25); }
+    #statePanel .desc a, .desc a { color: var(--color-accent); text-decoration: none; font-weight: 500; }
+    .spinner { width: 44px; height: 44px; margin: 10px auto 18px; border-radius: 50%;
+               border: 3px solid rgba(97,0,255,.15); border-top-color: var(--color-accent); animation: spin .9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .footer-note { text-align: center; font-size: 13px; color: var(--neutral-60); margin-top: 24px; line-height: 1.6; }
+    .footer-note a { color: var(--color-accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <header class="appbar">
+    <div class="appbar-inner">
+      <img src="https://cdn.ahlab.org/media/site/ahllogo_white.png" alt="Augmented Human Lab" class="lab-logo" />
+      <div class="appbar-title">Welcome to <strong>Lab</strong></div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="form-card">
+
+      <!-- Loading -->
+      <section class="section visible" id="loadingPanel">
+        <div class="spinner"></div>
+        <p class="desc" style="margin:0">Checking your Visitor Pass…</p>
+      </section>
+
+      <!-- Pass can't be claimed (not activated / used / revoked / expired / unknown) -->
+      <section class="section" id="statePanel">
+        <div class="state-icon" id="stateIcon"><i class="fa-solid fa-qrcode"></i></div>
+        <h2 id="stateTitle"></h2>
+        <p class="desc" id="stateMsg" style="margin-bottom:0"></p>
+      </section>
+
+      <!-- Form -->
+      <section class="section" id="formPanel">
+        <span class="section-label"><span class="icon"><i class="fa-solid fa-id-card"></i></span> Visitor Pass</span>
+        <h2>Welcome to the lab!</h2>
+        <p class="desc">
+          Your Visitor Pass gets you an <strong>@ahlab.org</strong> account with access to our
+          Slack and lab calendar. Tell us a little about yourself and we'll set it up right away.
+        </p>
+
+        <div class="token-chip"><i class="fa-solid fa-qrcode"></i> <span id="tokenLabel">…</span></div>
+
+        <div class="form-error" id="formError"></div>
+
+        <div class="row">
+          <div class="field" id="f-firstName">
+            <label><i class="fa-solid fa-user"></i>First Name<span class="req">*</span></label>
+            <input type="text" id="firstName" placeholder="Ada" autocomplete="given-name" maxlength="50" />
+            <div class="error-msg">Please enter your first name.</div>
+          </div>
+          <div class="field" id="f-lastName">
+            <label><i class="fa-solid fa-user"></i>Last Name<span class="req">*</span></label>
+            <input type="text" id="lastName" placeholder="Lovelace" autocomplete="family-name" maxlength="50" />
+            <div class="error-msg">Please enter your last name.</div>
+          </div>
+        </div>
+
+        <div class="field" id="f-personalEmail">
+          <label><i class="fa-solid fa-envelope"></i>Personal Email<span class="req">*</span></label>
+          <input type="email" id="personalEmail" placeholder="you@example.com" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" maxlength="254" />
+          <div class="hint">We'll send your guest credentials here.</div>
+          <div class="error-msg">Please enter a valid email address.</div>
+        </div>
+
+        <div class="field" id="f-affiliation">
+          <label><i class="fa-solid fa-building-columns"></i>Affiliation / Organisation</label>
+          <input type="text" id="affiliation" placeholder="University, company, or lab (optional)" autocomplete="organization" maxlength="100" />
+        </div>
+
+        <div class="note">
+          <i class="fa-solid fa-circle-info"></i>
+          <span>Guest accounts have limited Workspace permissions and may be removed once
+          you're done at the lab. Your pass works exactly once.</span>
+        </div>
+
+        <button class="btn-submit" id="submitBtn" onclick="submit()" disabled>
+          <i class="fa-solid fa-wand-magic-sparkles" style="margin-right:8px"></i>Create My Account
+        </button>
+      </section>
+
+      <!-- Success -->
+      <section class="section" id="successPanel">
+        <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+        <h2>You're all set!</h2>
+        <p class="desc" style="margin-bottom:4px">Your account is ready:</p>
+        <div class="account-pill" id="accountEmail">…</div>
+        <p class="desc">
+          We've emailed your temporary password to <strong id="sentTo">your inbox</strong>,
+          along with the Slack invite and a link to add the lab calendar.
+        </p>
+        <p class="desc" style="font-size:13.5px;color:var(--neutral-60)">
+          Keep the pass — it's yours. Welcome to the Augmented Human Lab!
+        </p>
+      </section>
+    </div>
+
+    <p class="footer-note">
+      Augmented Human Lab · National University of Singapore<br>
+      Questions? <a href="mailto:ariel@ahlab.org">ariel@ahlab.org</a> · <a href="https://ahlab.org" target="_blank" rel="noopener">ahlab.org</a>
+    </p>
+  </main>
+
+  <script>
+    // Backend: ahl-visitor-form doPost public actions claimInfo / claim (localhost → dev deployment).
+    var PROD_API = 'https://script.google.com/macros/s/AKfycbwjUs3ZL8jfmclSfxAVKIJSwhNdV84gyWqRpFwM9FHCHaUCL15lW-eh7hIM0MOGp-yb/exec';
+    var DEV_API  = 'https://script.google.com/macros/s/AKfycbynkdtZwAc1nRCNh4caZOZKb7DyXxpiheLr21r65r_QLoNnAt7Pjgjfa1QM7JLJ1i4K/exec';
+    var API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? DEV_API : PROD_API;
+    var CONTACT = 'ariel@ahlab.org';
+    function api(body) {
+      return fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json(); });
+    }
+    function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+
+    // ?t=AHLV-XXXX-XXXX (new cards) or ?token=… — normalised the same way as the server.
+    function normCode(raw) {
+      var c = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (c.indexOf('AHLV') === 0) c = c.slice(4);
+      return c.length === 8 ? 'AHLV-' + c.slice(0, 4) + '-' + c.slice(4) : '';
+    }
+    var params = new URLSearchParams(location.search);
+    var TOKEN = normCode(params.get('t') || params.get('token'));
+    document.getElementById('tokenLabel').textContent = TOKEN;
+
+    function fmtDay(iso) {
+      return iso ? new Date(iso).toLocaleDateString('en-SG', { timeZone: 'Asia/Singapore', day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    }
+    function panel(id) {
+      ['loadingPanel', 'statePanel', 'formPanel', 'successPanel'].forEach(function (p) {
+        document.getElementById(p).classList.toggle('visible', p === id);
+      });
+    }
+    function showState(kind, icon, title, html) {
+      var ic = document.getElementById('stateIcon');
+      ic.className = 'state-icon' + (kind ? ' ' + kind : '');
+      ic.innerHTML = '<i class="fa-solid ' + icon + '"></i>';
+      document.getElementById('stateTitle').textContent = title;
+      document.getElementById('stateMsg').innerHTML = html;
+      panel('statePanel');
+    }
+    var contactLink = '<a href="mailto:' + CONTACT + '">' + CONTACT + '</a>';
+
+    // Same messages as passBlockedPage_() in Code.js (the old script.google.com page).
+    function showPassState(info) {
+      var code = '<strong>' + esc(info.code || TOKEN) + '</strong>';
+      if (info.state === 'ACTIVE') { panel('formPanel'); validate(false); return; }
+      if (info.state === 'INACTIVE') return showState('', 'fa-hourglass-half', 'Pass Not Activated',
+        (info.lapsed ? 'This Visitor Pass was activated but not claimed within ' + (info.activationDays || 7) + ' days, so it was switched off.'
+                     : 'This Visitor Pass hasn\'t been activated yet.') +
+        '<br><br>Please ask the lab member who gave it to you to activate it — then scan it again. Questions? ' + contactLink + '.');
+      if (info.state === 'USED') return showState('warn', 'fa-circle-check', 'Pass Already Used',
+        'This Visitor Pass (' + code + ') has already been redeemed' + (info.usedAt ? ' on ' + fmtDay(info.usedAt) : '') +
+        '.<br><br>Each pass creates exactly one guest account. Keep the pass as a memento of your time with us! If this wasn\'t you, contact ' + contactLink + '.');
+      if (info.state === 'REVOKED') return showState('err', 'fa-ban', 'Pass Revoked',
+        'This Visitor Pass (' + code + ') has been revoked and can\'t be used.<br><br>If you think this is a mistake, contact ' + contactLink + '.');
+      if (info.state === 'EXPIRED') return showState('warn', 'fa-calendar-xmark', 'Pass Expired',
+        'This Visitor Pass expired on <strong>' + fmtDay(info.expiresAt) + '</strong>.<br><br>Please ask a lab member for a current pass, or contact ' + contactLink + '.');
+      showState('err', 'fa-circle-question', 'Invalid Pass',
+        'This pass code (' + code + ') isn\'t recognised.<br><br>The QR may be damaged. Please ask a lab member, or contact ' + contactLink + '.');
+    }
+
+    // ── validation ───────────────────────────────────────────
+    // Same rules as validateVisitor_() in Code.js (server re-checks).
+    var NAME_RE  = /^[\p{L}\p{M}][\p{L}\p{M}' .\-]*$/u;
+    var EMAIL_RE = /^[A-Za-z0-9!#$%&'*+\/=?^_`{|}~-]+(\.[A-Za-z0-9!#$%&'*+\/=?^_`{|}~-]+)*@([A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/;
+    function asciiHandle(s) {
+      return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    }
+    var RULES = {
+      firstName: function (v) {
+        if (!v) return 'Please enter your first name.';
+        if (!NAME_RE.test(v)) return 'Use letters only (spaces, - and \' are fine).';
+        if (!asciiHandle(v)) return 'Please include your name in Latin letters (A–Z) — it becomes your account address.';
+        return '';
+      },
+      lastName: function (v) {
+        if (!v) return 'Please enter your last name.';
+        if (!NAME_RE.test(v)) return 'Use letters only (spaces, - and \' are fine).';
+        return '';
+      },
+      personalEmail: function (v) {
+        if (!v) return 'Please enter your email address.';
+        if (v.length > 254 || !EMAIL_RE.test(v)) return 'Please enter a valid email address, e.g. name@example.com.';
+        if (/@ahlab\.org$/i.test(v)) return 'Please use a personal email — not an @ahlab.org address.';
+        return '';
+      }
+    };
+    var touched = {};
+    var submitting = false;
+
+    function value(id) { return document.getElementById(id).value.trim(); }
+
+    function validate(showAll) {
+      var allOk = true;
+      Object.keys(RULES).forEach(function (id) {
+        var msg = RULES[id](value(id));
+        if (msg) allOk = false;
+        var field = document.getElementById('f-' + id);
+        if (showAll || touched[id]) {
+          field.classList.toggle('error', !!msg);
+          if (msg) field.querySelector('.error-msg').textContent = msg;
+        }
+      });
+      if (!submitting) document.getElementById('submitBtn').disabled = !allOk;
+      return allOk;
+    }
+
+    Object.keys(RULES).forEach(function (id) {
+      var input = document.getElementById(id);
+      input.addEventListener('input', function () { validate(false); });
+      input.addEventListener('blur', function () {
+        if (input.value.trim()) touched[id] = true;   // don't nag on just tabbing past
+        validate(false);
+      });
+    });
+    ['firstName', 'lastName', 'personalEmail', 'affiliation'].forEach(function (id) {
+      document.getElementById(id).addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !document.getElementById('submitBtn').disabled) submit();
+      });
+    });
+
+    // Boot: no code → ask them to scan; else check the pass, then show the form or why not.
+    if (!TOKEN) {
+      showState('', 'fa-qrcode', 'Scan your Visitor Pass',
+        'This page is for holders of an <strong>AHL Visitor Pass</strong>. Scan the QR code on the back of your pass to claim your account. Questions? ' + contactLink + '.');
+    } else {
+      api({ action: 'claimInfo', token: TOKEN })
+        .then(function (info) { if (!info.ok) throw new Error(info.error || 'Request failed'); showPassState(info); })
+        .catch(function () {
+          showState('err', 'fa-wifi', 'Couldn\'t check your pass',
+            'Please check your connection and reload this page. If it keeps failing, contact ' + contactLink + '.');
+        });
+    }
+
+    function setFormDisabled(disabled) {
+      ['firstName', 'lastName', 'personalEmail', 'affiliation'].forEach(function (id) {
+        document.getElementById(id).disabled = disabled;
+      });
+      submitting = disabled;
+      var btn = document.getElementById('submitBtn');
+      btn.classList.toggle('submitting', disabled);
+      btn.disabled = disabled;
+      if (!disabled) validate(true);
+    }
+
+    function submit() {
+      var firstName = document.getElementById('firstName').value.trim();
+      var lastName  = document.getElementById('lastName').value.trim();
+      var email     = document.getElementById('personalEmail').value.trim();
+      var affiliation = document.getElementById('affiliation').value.trim();
+
+      if (submitting || !validate(true)) return;
+
+      var btn = document.getElementById('submitBtn');
+      var err = document.getElementById('formError');
+      err.classList.remove('visible');
+      setFormDisabled(true);
+      btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="margin-right:8px"></i>Creating your account…';
+
+      var restore = function (msg) {
+        err.textContent = msg; err.classList.add('visible');
+        setFormDisabled(false);
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" style="margin-right:8px"></i>Create My Account';
+      };
+      api({ action: 'claim', token: TOKEN, firstName: firstName, lastName: lastName, personalEmail: email, affiliation: affiliation })
+        .then(function (res) {
+          if (res && res.success) {
+            document.getElementById('accountEmail').textContent = res.accountEmail || '';
+            document.getElementById('sentTo').textContent = email;
+            panel('successPanel');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            restore((res && (res.message || res.error)) || 'Something went wrong. Please try again.');
+          }
+        })
+        .catch(function (e) { restore('Request failed: ' + (e && e.message ? e.message : e) + '. Please try again.'); });
+    }
+  </script>
+</body>
+</html>

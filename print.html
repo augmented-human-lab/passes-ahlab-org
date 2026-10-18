@@ -484,7 +484,7 @@
       }
 
       new QRCode(qr, {
-        text: BASE + '?token=' + encodeURIComponent(token),
+        text: BASE + (window.QR_PARAM || '?token=') + encodeURIComponent(token),
         width: 512, height: 512,
         colorDark: '#0E0F11', colorLight: '#FFFFFF',
         correctLevel: QRCode.CorrectLevel.M
@@ -701,7 +701,9 @@
         });
         if (!tokens.length) { fail('This batch has no printable (inactive or active) passes.'); return; }
         document.title = 'Print · ' + batch + ' — Visitor Passes';
-        window.buildCards(tokens, res.publicUrl);
+        // New cards: passes.ahlab.org/claim/?t=… (immune to Google's /macros/u/1/ multi-account bug).
+        window.QR_PARAM = res.claimUrl ? '?t=' : '?token=';
+        window.buildCards(tokens, res.claimUrl || res.publicUrl);
       })
       .catch(function (err) { fail(err.message); });
   })();

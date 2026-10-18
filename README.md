@@ -22,6 +22,23 @@ Admin console for AHL **Visitor Passes**, the printed credit-card cards that giv
 Printed passes start **inactive**. Scanning one before it's activated shows "Pass Not
 Activated", so a lost card is useless until an admin activates it.
 
+## The visitor claim page (`/claim/`)
+
+QR codes on new cards point at `https://passes.ahlab.org/claim/?t=AHLV-XXXX-XXXX`. The page
+asks the backend about the pass (`claimInfo`), then shows the sign-up form (active pass)
+or why it can't be claimed (not activated, used, revoked, expired, unknown). Submitting calls
+`claim`, which runs the same server code as before: validation, lock, account, emails.
+Neither action needs sign-in; the pass code is the credential.
+
+Why not link straight to the Apps Script web app: when a phone is signed into several Google
+accounts, Google rewrites `script.google.com/macros/s/…` to `…/macros/u/1/s/…`, and that URL
+fails with "Sorry, unable to open the file at present" before the script runs. Cards printed
+before this change still point at the script URL. They work for most people, but reprint
+any that haven't been handed out.
+
+`claim/index.html` is generated from ahl-visitor-form `src/Index.html` (same look, wording and
+validation). Keep the two in sync.
+
 ## How it fits together
 
 ```text
