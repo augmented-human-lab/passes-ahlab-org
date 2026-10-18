@@ -328,12 +328,30 @@
                         font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 19px; letter-spacing: .08em; text-transform: uppercase; }
     .code-field input::placeholder { color: #C5CDD5; }
     .act-hint { color: var(--n70); font-size: 13px; text-align: center; margin-top: -4px; }
-    .act-state { display: none; border-radius: 14px; padding: 14px 16px; background: #fff; border: 1px solid var(--line); font-size: 14.5px; }
-    .act-state.show { display: block; }
-    .act-state .top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-    .act-state .top .c { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; letter-spacing: .05em; }
-    .act-state p { color: var(--n80); }
-    .act-state.ok { border-color: #BFE9D2; background: #F3FBF7; }
+    .act-state { display: none; flex-direction: column; gap: 12px; }
+    .act-state.show { display: flex; }
+    /* digital pass: a credit-card replica of the printed card's back */
+    .pass-visual { position: relative; width: 100%; max-width: 380px; margin: 0 auto; aspect-ratio: 85.6 / 53.98; border-radius: 16px;
+                   background: #000; color: #fff; padding: 18px 20px; display: flex; flex-direction: column; overflow: hidden;
+                   box-shadow: 0 14px 34px rgba(14,15,17,.28); }
+    .pass-visual::after { content: ''; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%;
+                          border: 1px solid rgba(255,255,255,.08); box-shadow: 0 0 0 28px rgba(255,255,255,.025); pointer-events: none; }
+    .pass-visual .pv-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .pass-visual .pv-chip { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; padding: 5px 11px; border-radius: 999px; background: var(--grad); }
+    .pass-visual .pv-code { margin: auto 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: clamp(20px, 6.2vw, 26px);
+                            font-weight: 600; letter-spacing: .08em; }
+    .pass-visual .pv-bottom { display: flex; align-items: flex-end; justify-content: space-between; }
+    .pass-visual .pv-bottom img { height: 24px; width: auto; display: block; }
+    .pass-visual .pv-valid { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #AAAFB6; }
+    .pass-visual .chip { background: rgba(255,255,255,.14); color: #fff; }
+    .pass-visual .chip.st-ACTIVE { background: #3DDC97; color: #04361f; }
+    .pass-visual .chip.st-REVOKED { background: #FF6B6B; color: #3d0007; }
+    .pass-visual .chip.st-EXPIRED { background: #FFB020; color: #3d2600; }
+    .pass-visual .chip.st-USED { background: #B79CFF; color: #1c0059; }
+    /* the message, in its own card */
+    .act-info { border-radius: 14px; padding: 14px 16px; background: #fff; border: 1px solid var(--line); font-size: 14.5px; color: var(--n80); }
+    .act-info.ok { border-color: #BFE9D2; background: #F3FBF7; }
+    .act-info strong { color: var(--ink); }
     .act-go { width: 100%; padding: 14px 20px; font-size: 16px; }
     .act-alt { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .act-alt .btn { padding: 13px 16px; font-size: 15px; }
@@ -1205,8 +1223,14 @@
     function showActState(p, kind, html, go) {
       $('actLink').classList.toggle('hidden', !(p && p.state === 'ACTIVE'));   // share the claim link for an active pass
       var el = $('actState');
-      el.className = 'act-state show' + (kind ? ' ' + kind : '');
-      el.innerHTML = '<div class="top"><span class="c">' + esc(p ? p.code : actCodeNow) + '</span>' + (p ? chip(p.state) : '') + '</div><p>' + html + '</p>';
+      el.className = 'act-state show';
+      var card = p ? '<div class="pass-visual" aria-label="Visitor Pass ' + esc(p.code) + '">' +
+          '<div class="pv-top"><span class="pv-chip">VISITOR PASS</span>' + chip(p.state) + '</div>' +
+          '<div class="pv-code">' + esc(p.code) + '</div>' +
+          '<div class="pv-bottom"><img src="https://cdn.ahlab.org/media/site/ahllogo_white.png" alt="Augmented Human Lab" />' +
+          (p.expiresAt ? '<span class="pv-valid">Valid to ' + new Date(p.expiresAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Singapore', month: '2-digit', year: 'numeric' }) + '</span>' : '') +
+          '</div></div>' : '';
+      el.innerHTML = card + '<div class="act-info' + (kind ? ' ' + kind : '') + '">' + html + '</div>';
       if (go === 'manage') return setGo('manage', true);
       setGo(go || 'activate', !!go && go !== 'none');
       if (go === 'none') setGo('activate', false);
@@ -1215,7 +1239,7 @@
       actCodeNow = code;
       var local = find(code);
       if (local) describeAct(local);
-      else { $('actState').className = 'act-state show'; $('actState').innerHTML = '<p class="hint"><i class="fa-solid fa-circle-notch spin"></i> Looking up ' + esc(code) + '…</p>'; setGo('activate', false); }
+      else { $('actState').className = 'act-state show'; $('actState').innerHTML = '<div class="act-info"><i class="fa-solid fa-circle-notch spin"></i> Looking up ' + esc(code) + '…</div>'; setGo('activate', false); }
       api('get', { code: code }).then(function (res) {
         if (actCodeNow !== code) return;
         upsert(res.pass); describeAct(res.pass);
@@ -1253,7 +1277,8 @@
       setActBusy(true); b.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Activating…';
       api('activate', { code: code }).then(function (res) {
         upsert(res.pass);
-        showActState(res.pass, 'ok', '<strong>Activated.</strong> Hand the card over. It works until ' + fmt(res.pass.activeUntil, true) + '.', 'none');
+        showActState(res.pass, 'ok', '<strong>Activated.</strong> You can hand the card over or share the digital form link. ' +
+                     'It works until ' + fmt(res.pass.activeUntil, true) + '.', 'none');
         setGo('next', true);
         if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
       }).catch(function (err) { toast(err.message); describeAct(find(code) || { code: code, state: 'INACTIVE' }); })
