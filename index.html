@@ -288,7 +288,8 @@
     #dCopy { margin-right: auto; }
     .icon-btn { background: none; border: none; width: 36px; height: 36px; border-radius: 8px; color: var(--n80); font-size: 18px; }
     .icon-btn:hover { background: var(--bg); }
-    .drawer .body { padding: 18px 20px 28px; overflow-y: auto; flex: 1; }
+    .drawer .body { padding: 18px 20px 28px; overflow-y: auto; flex: 1; overscroll-behavior: contain; }
+    .scrim { touch-action: none; }
     .timeline { list-style: none; margin: 4px 0 18px; }
     .timeline li { position: relative; padding: 0 0 14px 22px; font-size: 14px; }
     .timeline li::before { content: ''; position: absolute; left: 5px; top: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--n60); }
@@ -1025,9 +1026,17 @@
       if (p.state === 'USED') h += '<p class="hint">To remove this guest account, delete ' + esc(p.accountEmail) + ' in the Google Admin console.</p>';
       $('dBody').innerHTML = h;
       $('drawer').classList.add('open'); $('scrim').classList.add('open'); $('drawer').setAttribute('aria-hidden', 'false');
+      lockPage(true);
     }
     function closeDrawer() {
       state.open = null; $('drawer').classList.remove('open'); $('scrim').classList.remove('open'); $('drawer').setAttribute('aria-hidden', 'true');
+      lockPage(false);
+    }
+    // Freeze the page behind an open panel/screen (no scroll-through on phones).
+    function lockPage(on) {
+      var lock = on || state.open || !$('actScreen').classList.contains('hidden');
+      document.documentElement.style.overflow = lock ? 'hidden' : '';
+      document.body.style.overflow = lock ? 'hidden' : '';
     }
     $('dClose').addEventListener('click', closeDrawer);
     $('scrim').addEventListener('click', closeDrawer);
@@ -1065,13 +1074,13 @@
       return jsqrLoading;
     }
     function openActivate(prefill) {
-      $('actScreen').classList.remove('hidden'); document.body.style.overflow = 'hidden';
+      $('actScreen').classList.remove('hidden'); lockPage(true);
       $('actCam').classList.remove('off');
       resetAct(prefill);
       startCamera();
     }
     function closeActivate() {
-      stopCamera(); $('actScreen').classList.add('hidden'); document.body.style.overflow = '';
+      stopCamera(); $('actScreen').classList.add('hidden'); lockPage(false);
     }
     function showAgain(on) {
       var b = $('actAgain');
