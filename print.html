@@ -94,6 +94,17 @@
     .toolbar button:disabled { opacity: .6; cursor: progress; }
     .toolbar .actions { display: flex; gap: 10px; }
     .toolbar .caret { width: 12px; height: 12px; margin-left: -2px; }
+    @media (max-width: 700px) {   /* phone: logo ··· title, then Print | Download full width */
+      .toolbar { padding: 10px 14px; gap: 10px; }
+      .toolbar .brand { flex: 1 1 100%; margin-right: 0; justify-content: space-between; }
+      .toolbar .brand img { height: 24px; }
+      .toolbar h1 { font-size: 15px; }
+      .toolbar .meta { display: none; }
+      .toolbar .actions { flex: 1 1 100%; display: grid; grid-template-columns: 1fr 1fr; }   /* Print | Download: equal halves */
+      .toolbar .actions button { justify-content: center; }
+      #downloadBtn { width: 100%; }
+      .instructions { margin: 12px 8px 0; font-size: 12.5px; padding: 12px 14px; }
+    }
 
     /* Download ▾ dropdown */
     .dropdown { position: relative; }
@@ -322,6 +333,7 @@
       .toolbar, .instructions { display: none; }
       .sheet { margin: 0; box-shadow: none; page-break-after: always; }
       .cut-guide { display: none; }   /* crop marks only — no line survives on the cut edge */
+      #sheets { zoom: 1 !important; }   /* phones shrink the preview on screen; never the print */
     }
   </style>
 </head>
@@ -367,6 +379,17 @@
   </div>
 
   <div id="sheets"></div>
+  <script>
+    // Phones: shrink the A4 preview to the screen width (whole sheet visible, no pinch-zoom).
+    // Screen only: print uses zoom 1 (@media print) and the PDF capture resets it.
+    (function () {
+      function fit() {
+        var a4 = 210 * 96 / 25.4, avail = document.documentElement.clientWidth - 16;
+        document.getElementById('sheets').style.zoom = Math.min(1, avail / a4).toFixed(4);
+      }
+      fit(); addEventListener('resize', fit);
+    })();
+  </script>
 
   
   <script>
@@ -566,6 +589,8 @@
     // PDF: each .sheet is exactly A4, so it's rendered at ~300 dpi and placed
     // full-page (0 margin) — the PDF prints at 100% like the HTML does.
     function downloadPdf() {
+      var holder = document.getElementById('sheets'), z = holder.style.zoom;
+      holder.style.zoom = 1;   // capture at true A4 size, then restore the phone preview zoom
       var sheets = Array.prototype.slice.call(document.querySelectorAll('.sheet'));
       var pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
       return sheets.reduce(function (chain, sheet, i) {
@@ -583,7 +608,7 @@
         });
       }, Promise.resolve()).then(function () {
         pdf.save('ahl-visitor-cards-' + BATCH + '.pdf');
-      });
+      }).then(function () { holder.style.zoom = z; }, function (err) { holder.style.zoom = z; throw err; });
     }
 
     // ── PLT for the sclab flatbed print-and-cut cutter ───────────────────
