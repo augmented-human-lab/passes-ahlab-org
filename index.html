@@ -282,6 +282,10 @@
     .act-state p { color: var(--n80); }
     .act-state.ok { border-color: #BFE9D2; background: #F3FBF7; }
     .act-go { width: 100%; padding: 14px 20px; font-size: 16px; }
+    .act-alt { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .act-alt .btn { padding: 13px 16px; font-size: 15px; }
+    .act-cam .tap { position: absolute; top: 10px; right: 10px; color: #fff; font-size: 12px; background: rgba(0,0,0,.45);
+                    border-radius: 999px; padding: 4px 10px; pointer-events: none; }
 
     /* copy-code icon button */
     .copy-btn { background: none; border: none; width: 28px; height: 28px; border-radius: 6px; color: var(--n60);
@@ -404,6 +408,7 @@
         <video id="scanVideo" playsinline muted></video>
         <div class="frame"></div>
         <div class="cam-msg" id="scanStatus">Starting camera…</div>
+        <div class="tap hidden" id="tapHint"><i class="fa-solid fa-crosshairs"></i> Tap to focus</div>
       </div>
       <label class="code-field" for="actCode">
         <span class="prefix">AHLV-</span>
@@ -412,6 +417,10 @@
       <p class="act-hint" id="actHint">Scan the QR on the card's back, or type the code printed under it.</p>
       <div class="act-state" id="actState"></div>
       <button class="btn btn-primary act-go" id="actGo" type="button" disabled><i class="fa-solid fa-bolt"></i>Activate</button>
+      <div class="act-alt hidden" id="actAlt">
+        <button class="btn btn-secondary" id="actDeactivate" type="button"><i class="fa-solid fa-power-off"></i>Deactivate</button>
+        <button class="btn btn-danger" id="actRevoke" type="button"><i class="fa-solid fa-ban"></i>Revoke</button>
+      </div>
     </div>
   </div>
 
@@ -838,6 +847,40 @@
       if (prefill) lookupAct(prefill); else if (!('ontouchstart' in window)) $('actCode').focus();
       if (stream) resumeScan();
     }
+    // Phones with several rear lenses: Chrome's plain facingMode:'environment' often lands on the
+    // ultra-wide (fixed focus, blurry up close) at 640×480. Ask for 1080p + continuous autofocus,
+    // then switch to the MAIN rear lens by label ("camera2 0, facing back" on Android), and zoom
+    // in a little where supported so the card can be held at a distance the lens can focus.
+    var VIDEO = { width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: 'continuous' }] };
+    function getStream(deviceId) {
+      var v = Object.assign({}, VIDEO, deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: 'environment' } });
+      return navigator.mediaDevices.getUserMedia({ video: v, audio: false });
+    }
+    function mainBackCameraId() {
+      return navigator.mediaDevices.enumerateDevices().then(function (ds) {
+        var back = ds.filter(function (d) { return d.kind === 'videoinput' && /back|rear|environment/i.test(d.label); });
+        var main = back.filter(function (d) { return /\b0\b/.test(d.label); })[0] || back[0];
+        return main ? main.deviceId : null;
+      }).catch(function () { return null; });
+    }
+    function tuneTrack(track) {
+      var caps = (track.getCapabilities && track.getCapabilities()) || {}, adv = {};
+      if (caps.focusMode && caps.focusMode.indexOf('continuous') !== -1) adv.focusMode = 'continuous';
+      if (caps.zoom && caps.zoom.max >= 1.5) adv.zoom = Math.min(1.5, caps.zoom.max);
+      if (Object.keys(adv).length) track.applyConstraints({ advanced: [adv] }).catch(function () {});
+      $('tapHint').classList.toggle('hidden', !caps.focusMode);
+    }
+    function refocus() {   // tap: one autofocus pass, then back to continuous
+      var track = stream && stream.getVideoTracks()[0];
+      var caps = track && track.getCapabilities ? track.getCapabilities() : {};
+      if (!track || !caps.focusMode) return;
+      var single = caps.focusMode.indexOf('single-shot') !== -1 ? 'single-shot' : 'continuous';
+      track.applyConstraints({ advanced: [{ focusMode: single }] })
+        .then(function () { if (single !== 'continuous') setTimeout(function () { tuneTrack(track); }, 1200); })
+        .catch(function () {});
+      $('scanStatus').textContent = 'Focusing…';
+      setTimeout(function () { if (scanning) $('scanStatus').textContent = 'Point at the QR on the card\'s back'; }, 1200);
+    }
     function startCamera() {
       var cam = $('actCam');
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cam.classList.add('nocam'); return; }
@@ -845,8 +888,21 @@
       var ready = ('BarcodeDetector' in window)
         ? BarcodeDetector.getSupportedFormats().then(function (f) { if (f.indexOf('qr_code') !== -1) detector = new BarcodeDetector({ formats: ['qr_code'] }); else return loadJsQR(); })
         : loadJsQR();
-      Promise.all([ready, navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })])
-        .then(function (res) { stream = res[1]; var v = $('scanVideo'); v.srcObject = stream; return v.play(); })
+      Promise.all([ready, getStream()])
+        .then(function (res) {
+          stream = res[1];
+          // Labels are only readable once permission is granted — now pick the main rear lens.
+          return mainBackCameraId().then(function (id) {
+            var cur = stream.getVideoTracks()[0].getSettings().deviceId;
+            if (!id || id === cur) return;
+            return getStream(id).then(function (s2) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = s2; })
+                                .catch(function () {});   // keep the first stream if switching fails
+          });
+        })
+        .then(function () {
+          if ($('actScreen').classList.contains('hidden')) { stopCamera(); return; }   // closed meanwhile
+          var v = $('scanVideo'); v.srcObject = stream; tuneTrack(stream.getVideoTracks()[0]); return v.play();
+        })
         .then(function () { resumeScan(); })
         .catch(function (err) {
           stopCamera(); cam.classList.add('nocam');
@@ -854,6 +910,7 @@
                                      'Type the code printed under the QR.';
         });
     }
+    $('actCam').addEventListener('click', refocus);
     function stopCamera() {
       scanning = false;
       if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
@@ -904,7 +961,9 @@
 
     function setGo(mode, enabled) {
       var b = $('actGo'); b.dataset.mode = mode; b.disabled = !enabled;
-      b.className = 'btn act-go ' + (mode === 'next' ? 'btn-secondary' : 'btn-primary');
+      b.className = 'btn act-go ' + (mode === 'next' ? 'btn-secondary' : 'btn-primary') + (mode === 'manage' ? ' hidden' : '');
+      $('actAlt').classList.toggle('hidden', mode !== 'manage');
+      revokeArmedAct = false; resetRevokeBtn();
       b.innerHTML = mode === 'next' ? '<i class="fa-solid fa-qrcode"></i>Scan next pass'
                   : mode === 'reactivate' ? '<i class="fa-solid fa-bolt"></i>Re-activate' : '<i class="fa-solid fa-bolt"></i>Activate';
     }
@@ -912,6 +971,7 @@
       var el = $('actState');
       el.className = 'act-state show' + (kind ? ' ' + kind : '');
       el.innerHTML = '<div class="top"><span class="c">' + esc(p ? p.code : actCodeNow) + '</span>' + (p ? chip(p.state) : '') + '</div><p>' + html + '</p>';
+      if (go === 'manage') return setGo('manage', true);
       setGo(go || 'activate', !!go && go !== 'none');
       if (go === 'none') setGo('activate', false);
     }
@@ -935,7 +995,8 @@
       if (p.state === 'REVOKED')
         return showActState(p, '', 'Revoked by ' + esc(who(p.revokedBy)) + ' on ' + fmt(p.revokedAt) + '. Re-activate it to make it usable again.', 'reactivate');
       if (p.state === 'ACTIVE')
-        return showActState(p, 'ok', 'Already active, activated by ' + esc(who(p.activatedBy)) + ' · lapses ' + rel(p.activeUntil) + '. Nothing to do.', 'none');
+        return showActState(p, 'ok', 'Already active, activated by ' + esc(who(p.activatedBy)) + ' · lapses ' + rel(p.activeUntil) +
+          '. Nothing to do, unless you want to switch it off.', 'manage');
       if (p.state === 'USED')
         return showActState(p, '', 'Already used by <strong>' + esc(p.visitorName) + '</strong> (' + esc(p.accountEmail) + ') on ' + fmt(p.usedAt) + '. Nothing to do.', 'none');
       if (p.state === 'EXPIRED')
@@ -952,6 +1013,28 @@
         setGo('next', true);
         if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
       }).catch(function (err) { toast(err.message); describeAct(find(code) || { code: code, state: 'INACTIVE' }); });
+    });
+    // Active pass: Deactivate (back to inactive, e.g. a test) or Revoke (second tap confirms)
+    var revokeArmedAct = false;
+    function resetRevokeBtn() { var b = $('actRevoke'); b.classList.remove('confirm'); b.disabled = false; b.innerHTML = '<i class="fa-solid fa-ban"></i>Revoke'; }
+    function actManage(act, btn, label) {
+      var code = actCodeNow; if (!code) return;
+      btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>' + label;
+      api(act, { code: code }).then(function (res) {
+        upsert(res.pass); describeAct(res.pass);
+        toast(code + (act === 'revoke' ? ' revoked' : ' deactivated'));
+      }).catch(function (err) { toast(err.message); describeAct(find(code)); })
+        .then(function () { $('actDeactivate').disabled = false; $('actDeactivate').innerHTML = '<i class="fa-solid fa-power-off"></i>Deactivate'; });
+    }
+    $('actDeactivate').addEventListener('click', function () { actManage('deactivate', this, 'Deactivating…'); });
+    $('actRevoke').addEventListener('click', function () {
+      var b = this;
+      if (!revokeArmedAct) {
+        revokeArmedAct = true; b.classList.add('confirm'); b.innerHTML = '<i class="fa-solid fa-ban"></i>Tap again to revoke';
+        setTimeout(function () { if (revokeArmedAct) { revokeArmedAct = false; resetRevokeBtn(); } }, 4000);
+        return;
+      }
+      revokeArmedAct = false; actManage('revoke', b, 'Revoking…');
     });
     $('actOpenBtn').addEventListener('click', function () { openActivate(); });
     $('actClose').addEventListener('click', closeActivate);
