@@ -22,7 +22,7 @@ Admin console for AHL **Visitor Passes**, the printed credit-card cards that giv
 - **Passes sets:** every set created so far, newest first, with pills for passes / used / free
   (+ revoked, expired) and an
   **Open print sheet** button (prints its still-usable passes) plus **Show passes**.
-- **Deactivate, extend, revoke or re-activate** a pass from its details (click the row).
+- **Deactivate, revoke or re-activate** a pass from its details (click the row).
 - **Bulk actions:** press and hold a row to start selecting. The first pass sets the type (others
   grey out); a frosted bar at the bottom offers that type's actions, Select all and Cancel.
 

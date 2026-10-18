@@ -742,8 +742,7 @@
     var BULK = {
       INACTIVE: [['activate', 'Activate', 'btn-primary', 'fa-bolt'], ['revoke', 'Revoke', 'btn-danger', 'fa-ban']],
       ACTIVE:   [['deactivate', 'Deactivate', 'btn-secondary', 'fa-power-off'], ['revoke', 'Revoke', 'btn-danger', 'fa-ban']],
-      REVOKED:  [['activate', 'Re-activate', 'btn-primary', 'fa-bolt']],
-      EXPIRED:  [['extend', 'Extend 1 year', 'btn-secondary', 'fa-calendar-plus']]
+      REVOKED:  [['activate', 'Re-activate', 'btn-primary', 'fa-bolt']]
     };
     // A completed hold must not also count as a click. Only the click that fires right as the
     // hold's pointer is released is ignored (desktop may fire none, since the row re-renders).
@@ -755,7 +754,7 @@
       clearTimeout(holdTimer);
       holdTimer = setTimeout(function () {
         var p = find(tr.dataset.open);
-        if (!p || !BULK[p.state]) { toast('Used passes can\'t be bulk-edited'); return; }
+        if (!p || !BULK[p.state]) { toast((p ? LABEL[p.state] : 'These') + ' passes have no bulk actions'); return; }
         if (navigator.vibrate) navigator.vibrate(30);
         holdFired = true;
         if (!state.sel.on) startSel(p); else toggleSel(p.code);
@@ -1018,8 +1017,6 @@
       if (p.state === 'ACTIVE') main = B('btn-primary', 'joinlink', '', LINK_BTN);
       if (p.state === 'ACTIVE') acts.push(B('btn-secondary', 'deactivate', 'fa-power-off', 'Deactivate'));
       if (p.state !== 'USED' && p.state !== 'REVOKED') acts.push(B('btn-danger', 'revoke', 'fa-ban', 'Revoke'));
-      if (p.state === 'INACTIVE' || p.state === 'ACTIVE' || p.state === 'EXPIRED')
-        acts.push(B('btn-secondary', 'extend', 'fa-calendar-plus', 'Extend 1 year', 'Set expiry to one year from today'));
       if (p.batch && p.state !== 'USED' && p.state !== 'REVOKED' && p.state !== 'EXPIRED')
         acts.push(B('btn-secondary', 'print', 'fa-print', 'Print its batch'));
       if (main || acts.length) {
@@ -1275,7 +1272,7 @@
       if (p.state === 'USED')
         return showActState(p, '', 'Already used by <strong>' + esc(p.visitorName) + '</strong> (' + esc(p.accountEmail) + ') on ' + fmt(p.usedAt) + '. Nothing to do.', 'none');
       if (p.state === 'EXPIRED')
-        return showActState(p, '', 'Expired on ' + fmt(p.expiresAt) + '. Extend it from its row in the list first.', 'none');
+        return showActState(p, '', 'Expired on ' + fmt(p.expiresAt) + '. It can\'t be used any more. Hand over a new pass instead.', 'none');
     }
     // While a request runs, everything on the screen that could act is locked.
     var actBusy = false;
