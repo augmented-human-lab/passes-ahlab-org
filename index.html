@@ -993,7 +993,10 @@
       state.open = code;
       $('dCopy').innerHTML = copyBtn(p.code);
       var t = [];
-      t.push(['', 'Created', fmt(p.createdAt, true) + (p.batch ? ' · batch ' + esc(p.batch) : '')]);
+      // Console-made sets are labelled "<yyyy-MM-dd HH:mm> · <creator>"; editor-made ones carry no name.
+      var bParts = String(p.batch || '').split(' · '), creator = bParts[1] ? bParts[1] + '@' + DOMAIN : '';
+      t.push(['', 'Created' + (creator ? ' by ' + esc(creator) : ''),
+              fmt(p.createdAt, true) + (bParts[0] ? ' · batch ' + esc(bParts[0]) : '')]);
       if (p.activatedAt) t.push(['k-active', 'Activated by ' + esc(p.activatedBy) + (p.givenTo ? ' for <strong>' + esc(p.givenTo) + '</strong>' : ''),
         fmt(p.activatedAt, true) + (p.state === 'ACTIVE' ? ' · lapses ' + rel(p.activeUntil) : p.lapsed ? ' · lapsed unclaimed' : '')]);
       if (p.usedAt && p.state === 'USED') t.push(['k-used', 'Claimed by <strong>' + esc(p.visitorName) + '</strong>',
