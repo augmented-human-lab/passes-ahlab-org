@@ -127,8 +127,9 @@
     .btn-sm { padding: 7px 14px; font-size: 13.5px; }
 
     /* ── panels ─────────────────────────────────────── */
-    .summary { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .summary { display: flex; gap: 20px; align-items: stretch; flex-wrap: wrap; margin-bottom: 16px; }
     .summary .stats { flex: 1 1 520px; }
+    .summary .stat { display: flex; flex-direction: column; justify-content: center; }   /* tiles = height of the 2 buttons */
     .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
     .panel h2 { font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--n80);
                 margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
@@ -247,6 +248,12 @@
                vertical-align: -4px; place-items: center; color: #fff; font-size: 11px; background: #fff; transition: background .12s, border-color .12s; }
     .sel-box i { opacity: 0; }
     table.sel-mode .sel-box { display: inline-grid; }
+    @media (hover: hover) and (pointer: fine) {   /* mouse: no press-and-hold, ticks always there */
+      .sel-box { display: inline-grid; cursor: pointer; }
+      .sel-box:hover { border-color: var(--accent); }
+      tr[data-state="USED"] .sel-box { opacity: .35; cursor: default; }
+      tr[data-state="USED"] .sel-box:hover { border-color: var(--line-2); }
+    }
     table.sel-mode tr.picked .sel-box { background: var(--accent); border-color: var(--accent); }
     table.sel-mode tr.picked .sel-box i { opacity: 1; }
     table.sel-mode tr.picked { background: rgba(97,0,255,.05); }
@@ -299,7 +306,10 @@
     .act-cam { position: relative; width: 100%; aspect-ratio: 1; max-height: 46vh; border-radius: 18px; overflow: hidden; background: #0E0F11; }
     .act-cam.nocam, .act-cam.off { display: none; }
     .act-body.scanned .code-field, .act-body.scanned .act-hint { display: none; }   /* code shows in the state card */
-    .act-again { width: 100%; padding: 13px 20px; font-size: 15px; }
+    .act-body.scanned { flex: 1; justify-content: center; }   /* result + buttons centred once the camera is off */
+    .act-again, .act-link { width: 100%; padding: 13px 20px; font-size: 15px; }
+    .act-link { color: var(--accent); border-color: rgba(97,0,255,.3); }
+    .act-link { order: 1; } .act-again, .act-go.btn-secondary { order: 2; }   /* link before "Scan next/another" */
     .focus-ring { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; border: 2px solid #FFD54A; border-radius: 12px;
                   opacity: 0; pointer-events: none; }
     .focus-ring.show { animation: focusPulse 1.1s ease-out forwards; }
@@ -465,6 +475,7 @@
         <button class="btn btn-secondary" id="actDeactivate" type="button"><i class="fa-solid fa-power-off"></i>Deactivate</button>
         <button class="btn btn-danger" id="actRevoke" type="button"><i class="fa-solid fa-ban"></i>Revoke</button>
       </div>
+      <button class="btn btn-secondary act-link hidden" id="actLink" type="button"><i class="fa-solid fa-link"></i>Copy join form link</button>
       <button class="btn btn-secondary act-again hidden" id="actAgain" type="button">Scan another pass<i class="fa-solid fa-camera"></i></button>
     </div>
   </div>
@@ -691,6 +702,13 @@
     document.addEventListener('click', function (e) {
       var c = e.target.closest('[data-copy]');
       if (c) { copyCode(c); return; }   // don't also open the row
+      var box = e.target.closest('.sel-box');
+      if (box) {                                       // desktop checkbox
+        var bp = find(box.closest('tr').dataset.open);
+        if (!bp || !BULK[bp.state]) return;
+        if (!state.sel.on) startSel(bp); else toggleSel(bp.code);
+        return;
+      }
       var ra = e.target.closest('[data-row-act]');
       if (ra && !state.sel.on) { rowAct(ra); return; }
       var o = e.target.closest('[data-open]');
@@ -807,6 +825,30 @@
             : act === 'deactivate' ? code + ' deactivated' : code + ' revoked');
       }).catch(function (err) { toast(err.message); renderRows(); });
     }
+
+    function joinLink(code) {
+      return ((state.data && state.data.claimUrl) || 'https://passes.ahlab.org/claim/') + '?t=' + encodeURIComponent(code);
+    }
+    /** Copy text; on success swap the button's label for a tick briefly. */
+    function copyText(text, btn, okMsg) {
+      var html = btn.innerHTML;
+      var done = function () {
+        btn.innerHTML = '<i class="fa-solid fa-check"></i>Copied';
+        setTimeout(function () { btn.innerHTML = html; }, 1500);
+        toast(okMsg);
+      };
+      var legacy = function () {
+        var t = document.createElement('textarea');
+        t.value = text; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.select();
+        var ok = false; try { ok = document.execCommand('copy'); } catch (err) {}
+        t.remove();
+        if (ok) done(); else toast('Couldn\'t copy. Long-press the link instead: ' + text);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, legacy);
+      else legacy();
+    }
+    var LINK_BTN = '<i class="fa-solid fa-link"></i>Copy join form link';
 
     function copyCode(btn) {
       var code = btn.dataset.copy;
@@ -945,6 +987,7 @@
 
       var acts = [];
       if (p.state === 'INACTIVE' || p.state === 'REVOKED') acts.push('<button class="btn btn-primary btn-sm" data-act="activate" type="button"><i class="fa-solid fa-bolt"></i>Activate</button>');
+      if (p.state === 'ACTIVE')   acts.push('<button class="btn btn-primary btn-sm" data-act="joinlink" type="button">' + LINK_BTN + '</button>');
       if (p.state === 'ACTIVE')   acts.push('<button class="btn btn-secondary btn-sm" data-act="deactivate" type="button"><i class="fa-solid fa-power-off"></i>Deactivate</button>');
       if (p.state === 'INACTIVE' || p.state === 'ACTIVE' || p.state === 'EXPIRED')
         acts.push('<button class="btn btn-secondary btn-sm" data-act="extend" type="button" title="Set expiry to one year from today"><i class="fa-solid fa-calendar-plus"></i>Extend 1 year</button>');
@@ -969,6 +1012,7 @@
       var b = e.target.closest('[data-act]'); if (!b) return;
       var p = find(state.open), act = b.dataset.act;
       if (act === 'print') { openPrint(p.batch); return; }
+      if (act === 'joinlink') { copyText(joinLink(p.code), b, 'Join form link for ' + p.code + ' copied'); return; }
       if (act === 'revoke' && !revokeArmed) {
         revokeArmed = true; b.classList.add('confirm'); b.innerHTML = '<i class="fa-solid fa-ban"></i>Confirm revoke';
         setTimeout(function () { revokeArmed = false; if (b.isConnected) { b.classList.remove('confirm'); b.innerHTML = '<i class="fa-solid fa-ban"></i>Revoke'; } }, 4000);
@@ -1010,7 +1054,7 @@
                                                             : 'Scan another pass<i class="fa-solid fa-camera"></i>';
     }
     function resetAct(prefill) {
-      showAgain(false);
+      showAgain(false); $('actLink').classList.add('hidden');
       document.querySelector('.act-body').classList.remove('scanned');
       if ($('actCam').classList.contains('off')) { $('actCam').classList.remove('off'); if (!$('actScreen').classList.contains('hidden')) startCamera(); }
       actCodeNow = ''; $('actState').className = 'act-state'; $('actState').innerHTML = '';
@@ -1159,6 +1203,7 @@
                   : mode === 'reactivate' ? '<i class="fa-solid fa-bolt"></i>Re-activate' : '<i class="fa-solid fa-bolt"></i>Activate';
     }
     function showActState(p, kind, html, go) {
+      $('actLink').classList.toggle('hidden', !(p && p.state === 'ACTIVE'));   // share the claim link for an active pass
       var el = $('actState');
       el.className = 'act-state show' + (kind ? ' ' + kind : '');
       el.innerHTML = '<div class="top"><span class="c">' + esc(p ? p.code : actCodeNow) + '</span>' + (p ? chip(p.state) : '') + '</div><p>' + html + '</p>';
@@ -1197,7 +1242,7 @@
     var actBusy = false;
     function setActBusy(on) {
       actBusy = on;
-      ['actDeactivate', 'actRevoke', 'actAgain', 'actCode'].forEach(function (id) { $(id).disabled = on; });
+      ['actDeactivate', 'actRevoke', 'actAgain', 'actCode', 'actLink'].forEach(function (id) { $(id).disabled = on; });
       if (on) $('actGo').disabled = true;   // re-enabled by setGo() for the new state
     }
     $('actGo').addEventListener('click', function () {
@@ -1242,6 +1287,7 @@
       revokeArmedAct = false; actManage('revoke', b, 'Revoking…');
     });
     $('actAgain').addEventListener('click', function () { if (!actBusy) resetAct(); });
+    $('actLink').addEventListener('click', function () { if (actCodeNow) copyText(joinLink(actCodeNow), this, 'Join form link copied. Send it to the visitor.'); });
     window.__passScan = found;   // test hook: feed a decoded QR string
     $('actOpenBtn').addEventListener('click', function () { openActivate(); });
     $('actClose').addEventListener('click', closeActivate);
