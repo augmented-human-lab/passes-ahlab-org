@@ -255,6 +255,20 @@
       font-size: 16px; font-weight: 600; color: var(--color-accent);
       padding: 12px 22px; margin: 14px 0 20px;
     }
+    /* ── Two-column form on desktop ──────────── */
+    .note-wide { display: none; }
+    @media (min-width: 900px) {
+      .main.wide { max-width: 1000px; }
+      .main.wide .form-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 44px; align-items: start; }
+      .main.wide .intro { padding-top: 4px; }
+      .main.wide .intro .desc { margin-bottom: 20px; }
+      .main.wide .intro .token-chip { margin-bottom: 20px; }
+      .main.wide .note-wide { display: flex; margin: 0; }
+      .main.wide .note-narrow { display: none; }
+      .main.wide .field { margin-bottom: 18px; }
+      .main.wide .btn-submit { margin-top: 6px; }
+    }
+
     /* ── Status / loading panels ──────────────── */
     #statePanel, #loadingPanel { display: none; text-align: center; }
     #statePanel.visible, #loadingPanel.visible { display: block; }
@@ -304,6 +318,8 @@
 
       <!-- Form -->
       <section class="section" id="formPanel">
+        <div class="form-grid">
+        <div class="intro">
         <span class="section-label"><span class="icon"><i class="fa-solid fa-id-card"></i></span> Visitor Pass</span>
         <h2>Welcome to the lab!</h2>
         <p class="desc">
@@ -313,6 +329,14 @@
 
         <div class="token-chip"><i class="fa-solid fa-qrcode"></i> <span id="tokenLabel">…</span></div>
 
+        <div class="note note-wide">
+          <i class="fa-solid fa-circle-info"></i>
+          <span>Guest accounts have limited Workspace permissions and may be removed once
+          you're done at the lab. Your pass works exactly once.</span>
+        </div>
+        </div>
+
+        <div class="fields">
         <div class="form-error" id="formError"></div>
 
         <div class="row">
@@ -340,7 +364,7 @@
           <input type="text" id="affiliation" placeholder="University, company, or lab (optional)" autocomplete="organization" maxlength="100" />
         </div>
 
-        <div class="note">
+        <div class="note note-narrow">
           <i class="fa-solid fa-circle-info"></i>
           <span>Guest accounts have limited Workspace permissions and may be removed once
           you're done at the lab. Your pass works exactly once.</span>
@@ -349,6 +373,8 @@
         <button class="btn-submit" id="submitBtn" onclick="submit()" disabled>
           <i class="fa-solid fa-wand-magic-sparkles" style="margin-right:8px"></i>Create My Account
         </button>
+        </div>
+        </div>
       </section>
 
       <!-- Success -->
@@ -402,6 +428,7 @@
       ['loadingPanel', 'statePanel', 'formPanel', 'successPanel'].forEach(function (p) {
         document.getElementById(p).classList.toggle('visible', p === id);
       });
+      document.querySelector('.main').classList.toggle('wide', id === 'formPanel');   // 2 columns on desktop
     }
     function showState(kind, icon, title, html) {
       var ic = document.getElementById('stateIcon');
