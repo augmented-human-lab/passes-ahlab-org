@@ -6,7 +6,7 @@ Admin console for AHL **Visitor Passes**, the printed credit-card cards that giv
 
 ## What admins do here
 
-- **Activate a pass at handover:** press **Activate a pass 📷**. The screen opens the camera
+- **Activate a pass at handover:** press **Scan a pass 📷**. The screen opens the camera
   (phones; any device with a camera) and a code box. Scanning a card's QR fills the box, or type
   the code printed under it. The pass's state shows straight away (ready, already active,
   revoked, used, expired, not found) and **Activate** is enabled only when it makes sense

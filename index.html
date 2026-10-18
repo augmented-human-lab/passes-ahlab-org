@@ -261,6 +261,7 @@
                 display: flex; flex-direction: column; gap: 14px; }
     .act-cam { position: relative; width: 100%; aspect-ratio: 1; max-height: 46vh; border-radius: 18px; overflow: hidden; background: #0E0F11; }
     .act-cam.nocam, .act-cam.off { display: none; }
+    .act-body.scanned .code-field, .act-body.scanned .act-hint { display: none; }   /* code shows in the state card */
     .act-again { width: 100%; padding: 13px 20px; font-size: 15px; }
     .focus-ring { position: absolute; width: 74px; height: 74px; margin: -37px 0 0 -37px; border: 2px solid #FFD54A; border-radius: 12px;
                   opacity: 0; pointer-events: none; }
@@ -353,7 +354,7 @@
       <div class="panel summary">
         <div class="stats" id="stats"></div>
         <div class="new-sheet">
-          <button class="btn btn-primary" id="actOpenBtn" type="button">Activate a pass<i class="fa-solid fa-camera"></i></button>
+          <button class="btn btn-primary" id="actOpenBtn" type="button">Scan a pass<i class="fa-solid fa-camera"></i></button>
           <button class="btn btn-secondary" id="newSheetBtn" type="button"><i class="fa-solid fa-plus"></i>New passes set (set of 8)</button>
         </div>
       </div>
@@ -405,7 +406,7 @@
   <div class="act-screen hidden" id="actScreen" role="dialog" aria-modal="true" aria-labelledby="actTitle">
     <header class="act-head">
       <button class="icon-btn" id="actClose" type="button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
-      <h2 id="actTitle">Activate a pass</h2>
+      <h2 id="actTitle">Scan a pass</h2>
       <span style="width:36px"></span>
     </header>
     <div class="act-body">
@@ -427,7 +428,7 @@
         <button class="btn btn-secondary" id="actDeactivate" type="button"><i class="fa-solid fa-power-off"></i>Deactivate</button>
         <button class="btn btn-danger" id="actRevoke" type="button"><i class="fa-solid fa-ban"></i>Revoke</button>
       </div>
-      <button class="btn btn-secondary act-again hidden" id="actAgain" type="button"><i class="fa-solid fa-qrcode"></i>Scan another pass</button>
+      <button class="btn btn-secondary act-again hidden" id="actAgain" type="button">Scan another pass<i class="fa-solid fa-camera"></i></button>
     </div>
   </div>
 
@@ -851,10 +852,11 @@
       var b = $('actAgain');
       b.classList.toggle('hidden', !on || $('actGo').dataset.mode === 'next');
       b.innerHTML = $('actCam').classList.contains('nocam') ? '<i class="fa-solid fa-keyboard"></i>Enter another code'
-                                                            : '<i class="fa-solid fa-qrcode"></i>Scan another pass';
+                                                            : 'Scan another pass<i class="fa-solid fa-camera"></i>';
     }
     function resetAct(prefill) {
       showAgain(false);
+      document.querySelector('.act-body').classList.remove('scanned');
       if ($('actCam').classList.contains('off')) { $('actCam').classList.remove('off'); if (!$('actScreen').classList.contains('hidden')) startCamera(); }
       actCodeNow = ''; $('actState').className = 'act-state'; $('actState').innerHTML = '';
       $('actCode').value = prefill ? prefill.slice(5) : '';
@@ -976,8 +978,9 @@
       if (!code) { $('scanStatus').textContent = 'That QR isn\'t a Visitor Pass. Try again.'; requestAnimationFrame(tick); return; }
       if (code === actCodeNow) { requestAnimationFrame(tick); return; }
       if (navigator.vibrate) navigator.vibrate(60);
-      stopCamera();                           // got it: camera off, block collapses
+      stopCamera();                           // got it: camera off, block + code box collapse
       $('actCam').classList.add('off');
+      document.querySelector('.act-body').classList.add('scanned');
       $('actCode').value = code.slice(5);
       lookupAct(code);
       showAgain(true);
@@ -997,7 +1000,7 @@
       if (mode === 'next') $('actAgain').classList.add('hidden');
       $('actAlt').classList.toggle('hidden', mode !== 'manage');
       revokeArmedAct = false; resetRevokeBtn();
-      b.innerHTML = mode === 'next' ? '<i class="fa-solid fa-qrcode"></i>Scan next pass'
+      b.innerHTML = mode === 'next' ? 'Scan next pass<i class="fa-solid fa-camera"></i>'
                   : mode === 'reactivate' ? '<i class="fa-solid fa-bolt"></i>Re-activate' : '<i class="fa-solid fa-bolt"></i>Activate';
     }
     function showActState(p, kind, html, go) {
@@ -1035,33 +1038,47 @@
       if (p.state === 'EXPIRED')
         return showActState(p, '', 'Expired on ' + fmt(p.expiresAt) + '. Extend it from its row in the list first.', 'none');
     }
+    // While a request runs, everything on the screen that could act is locked.
+    var actBusy = false;
+    function setActBusy(on) {
+      actBusy = on;
+      ['actDeactivate', 'actRevoke', 'actAgain', 'actCode'].forEach(function (id) { $(id).disabled = on; });
+      if (on) $('actGo').disabled = true;   // re-enabled by setGo() for the new state
+    }
     $('actGo').addEventListener('click', function () {
       var b = $('actGo');
+      if (actBusy) return;
       if (b.dataset.mode === 'next') { resetAct(); return; }
       var code = actCodeNow; if (!code) return;
-      b.disabled = true; b.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Activating…';
+      setActBusy(true); b.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Activating…';
       api('activate', { code: code }).then(function (res) {
         upsert(res.pass);
         showActState(res.pass, 'ok', '<strong>Activated.</strong> Hand the card over. It works until ' + fmt(res.pass.activeUntil, true) + '.', 'none');
         setGo('next', true);
         if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
-      }).catch(function (err) { toast(err.message); describeAct(find(code) || { code: code, state: 'INACTIVE' }); });
+      }).catch(function (err) { toast(err.message); describeAct(find(code) || { code: code, state: 'INACTIVE' }); })
+        .then(function () { setActBusy(false); });
     });
     // Active pass: Deactivate (back to inactive, e.g. a test) or Revoke (second tap confirms)
     var revokeArmedAct = false;
     function resetRevokeBtn() { var b = $('actRevoke'); b.classList.remove('confirm'); b.disabled = false; b.innerHTML = '<i class="fa-solid fa-ban"></i>Revoke'; }
     function actManage(act, btn, label) {
-      var code = actCodeNow; if (!code) return;
-      btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>' + label;
+      var code = actCodeNow; if (!code || actBusy) return;
+      setActBusy(true); btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>' + label;
       api(act, { code: code }).then(function (res) {
         upsert(res.pass); describeAct(res.pass);
         toast(code + (act === 'revoke' ? ' revoked' : ' deactivated'));
       }).catch(function (err) { toast(err.message); describeAct(find(code)); })
-        .then(function () { $('actDeactivate').disabled = false; $('actDeactivate').innerHTML = '<i class="fa-solid fa-power-off"></i>Deactivate'; });
+        .then(function () {
+          setActBusy(false);
+          $('actDeactivate').innerHTML = '<i class="fa-solid fa-power-off"></i>Deactivate';
+          if (!$('actAgain').classList.contains('hidden')) showAgain(true);
+        });
     }
     $('actDeactivate').addEventListener('click', function () { actManage('deactivate', this, 'Deactivating…'); });
     $('actRevoke').addEventListener('click', function () {
       var b = this;
+      if (actBusy) return;
       if (!revokeArmedAct) {
         revokeArmedAct = true; b.classList.add('confirm'); b.innerHTML = '<i class="fa-solid fa-ban"></i>Tap again to revoke';
         setTimeout(function () { if (revokeArmedAct) { revokeArmedAct = false; resetRevokeBtn(); } }, 4000);
@@ -1069,7 +1086,7 @@
       }
       revokeArmedAct = false; actManage('revoke', b, 'Revoking…');
     });
-    $('actAgain').addEventListener('click', function () { resetAct(); });
+    $('actAgain').addEventListener('click', function () { if (!actBusy) resetAct(); });
     window.__passScan = found;   // test hook: feed a decoded QR string
     $('actOpenBtn').addEventListener('click', function () { openActivate(); });
     $('actClose').addEventListener('click', closeActivate);
