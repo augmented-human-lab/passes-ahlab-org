@@ -139,7 +139,7 @@
     @media (pointer: coarse) { .scan-only { display: inline-flex; } }
     td.col-act { text-align: right; white-space: nowrap; width: 1%; }
     .btn-act { padding: 6px 12px; font-size: 13px; width: 112px; justify-content: center; }
-    .act-pair { display: inline-flex; gap: 6px; }
+    .act-pair { display: inline-flex; gap: 6px; justify-content: flex-end; }
     #rows .chip { width: 96px; justify-content: center; }   /* uniform badge column */
     tr.flash td { animation: flash 1.6s ease-out; }
     @keyframes flash { from { background: #EEE7FF; } to { background: transparent; } }
@@ -188,6 +188,10 @@
     .set-row .what strong { font-size: 15px; }
     .set-row .what .sub { color: var(--n70); font-size: 13px; }
     .set-row .acts { display: flex; gap: 8px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--n80); background: var(--bg);
+            border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+    .pill.p-free { color: var(--s-active); background: var(--s-active-bg); border-color: transparent; font-weight: 600; }
     .set-row.on { background: linear-gradient(90deg, rgba(97,0,255,.05), transparent); }
 
     /* chips */
@@ -223,8 +227,41 @@
       tbody tr { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; padding: 10px 12px; }
       td { border: none; padding: 2px 0; }
       td.col-batch, td.col-expires { display: none; }
-      td.col-act { text-align: left; width: auto; padding-top: 8px; }
+      /* card: code ··· status / holder / actions bottom-right */
+      tbody tr { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "code status" "holder holder" "act act"; align-items: center; column-gap: 8px; }
+      td.code { grid-area: code; }
+      td.col-status { grid-area: status; width: auto; }
+      td.col-holder { grid-area: holder; }
+      td.col-act { grid-area: act; text-align: right; width: auto; padding-top: 8px; }
+      td.col-act:empty { display: none; }
+      table.sel-mode td.col-act { display: none; }   /* no empty gap while selecting */
+      .bulk-inner { gap: 8px; }
+      .bulk-inner .count { flex: 1; }
+      #bulkCancel { order: 2; }
+      #bulkActs { order: 3; flex-basis: 100%; display: flex; gap: 8px; }
+      #bulkActs .btn { flex: 1; padding: 11px 12px; font-size: 14.5px; }
+      #bulkCancel .lbl { display: none; }
     }
+    /* bulk selection (press and hold a row) */
+    .sel-box { display: none; width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--line-2); margin-right: 10px;
+               vertical-align: -4px; place-items: center; color: #fff; font-size: 11px; background: #fff; transition: background .12s, border-color .12s; }
+    .sel-box i { opacity: 0; }
+    table.sel-mode .sel-box { display: inline-grid; }
+    table.sel-mode tr.picked .sel-box { background: var(--accent); border-color: var(--accent); }
+    table.sel-mode tr.picked .sel-box i { opacity: 1; }
+    table.sel-mode tr.picked { background: rgba(97,0,255,.05); }
+    table.sel-mode tr.dim { opacity: .35; }
+    table.sel-mode td.col-act button, table.sel-mode .copy-btn { visibility: hidden; }
+    tbody tr { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    .bulk-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; transform: translateY(110%); transition: transform .22s ease;
+                padding: 34px 16px calc(16px + env(safe-area-inset-bottom)); }
+    .bulk-bar.open { transform: none; }
+    .bulk-bar::before { content: ''; position: absolute; inset: 0; z-index: -1; background: rgba(244,247,249,.78);
+                        -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+                        -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 30px); mask-image: linear-gradient(to bottom, transparent 0, #000 30px); }
+    .bulk-inner { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .bulk-inner .count { margin-right: auto; font-size: 14.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .bulk-inner .count .link-btn { padding: 2px 4px; }
 
     /* drawer */
     .scrim { position: fixed; inset: 0; background: rgba(14,15,17,.45); z-index: 40; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -355,7 +392,7 @@
         <div class="stats" id="stats"></div>
         <div class="new-sheet">
           <button class="btn btn-primary" id="actOpenBtn" type="button">Scan a pass<i class="fa-solid fa-camera"></i></button>
-          <button class="btn btn-secondary" id="newSheetBtn" type="button"><i class="fa-solid fa-plus"></i>New passes set (set of 8)</button>
+          <button class="btn btn-secondary" id="newSheetBtn" type="button"><i class="fa-solid fa-plus"></i>Create passes (8)</button>
         </div>
       </div>
 
@@ -432,6 +469,15 @@
     </div>
   </div>
 
+  <!-- bulk actions (appear after press-and-hold selects rows) -->
+  <div class="bulk-bar" id="bulkBar" aria-hidden="true">
+    <div class="bulk-inner">
+      <div class="count"><span id="bulkCount">0 selected</span><button class="link-btn" id="bulkAll" type="button">Select all</button></div>
+      <span id="bulkActs"></span>
+      <button class="btn btn-secondary btn-sm" id="bulkCancel" type="button" aria-label="Cancel selection"><i class="fa-solid fa-xmark"></i><span class="lbl">Cancel</span></button>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -449,7 +495,8 @@
     var STATES = ['INACTIVE', 'ACTIVE', 'USED', 'REVOKED', 'EXPIRED'];
     var LABEL = { INACTIVE: 'Inactive', ACTIVE: 'Active', USED: 'Used', REVOKED: 'Revoked', EXPIRED: 'Expired' };
 
-    var state = { session: null, data: null, filter: { state: 'ALL', q: '', batch: '' }, open: null };
+    var state = { session: null, data: null, filter: { state: 'ALL', q: '', batch: '' }, open: null,
+                  sel: { on: false, type: null, codes: [] } };
     function $(id) { return document.getElementById(id); }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
 
@@ -608,8 +655,13 @@
       $('countNote').textContent = rows.length + ' of ' + state.data.passes.length;
       if (!rows.length) { $('rows').innerHTML = '<tr><td colspan="6" class="empty">No passes match.</td></tr>'; return; }
       $('rows').innerHTML = rows.map(function (p) {
-        return '<tr data-open="' + esc(p.code) + '"><td class="code">' + esc(p.code) + copyBtn(p.code) + '</td><td>' + chip(p.state) + '</td>' +
-               '<td>' + holder(p) + '</td><td class="col-batch"><span class="sub">' + esc(p.batch) + '</span></td>' +
+        var sel = state.sel.on, picked = state.sel.codes.indexOf(p.code) !== -1;
+        var dim = sel && (p.state === 'USED' || (state.sel.type && p.state !== state.sel.type));
+        return '<tr data-open="' + esc(p.code) + '" data-state="' + p.state + '"' +
+               (sel ? ' class="' + (picked ? 'picked' : '') + (dim ? ' dim' : '') + '"' : '') + '>' +
+               '<td class="code"><span class="sel-box"><i class="fa-solid fa-check"></i></span>' + esc(p.code) + copyBtn(p.code) + '</td>' +
+               '<td class="col-status">' + chip(p.state) + '</td>' +
+               '<td class="col-holder">' + holder(p) + '</td><td class="col-batch"><span class="sub">' + esc(p.batch) + '</span></td>' +
                '<td class="col-expires"><span class="sub">' + fmt(p.expiresAt) + '</span></td>' +
                '<td class="col-act">' + rowAction(p) + '</td></tr>';
       }).join('');
@@ -640,9 +692,105 @@
       var c = e.target.closest('[data-copy]');
       if (c) { copyCode(c); return; }   // don't also open the row
       var ra = e.target.closest('[data-row-act]');
-      if (ra) { rowAct(ra); return; }
-      var o = e.target.closest('[data-open]'); if (o) openDrawer(o.dataset.open);
+      if (ra && !state.sel.on) { rowAct(ra); return; }
+      var o = e.target.closest('[data-open]');
+      if (o && Date.now() - holdUpAt < 80) return;   // the click that ends a hold
+      if (o && state.sel.on) { toggleSel(o.dataset.open); return; }
+      if (o) openDrawer(o.dataset.open);
     });
+    // ── bulk selection: press and hold a row (≈0.5 s) ───
+    var BULK = {
+      INACTIVE: [['activate', 'Activate', 'btn-primary', 'fa-bolt'], ['revoke', 'Revoke', 'btn-danger', 'fa-ban']],
+      ACTIVE:   [['deactivate', 'Deactivate', 'btn-secondary', 'fa-power-off'], ['revoke', 'Revoke', 'btn-danger', 'fa-ban']],
+      REVOKED:  [['activate', 'Re-activate', 'btn-primary', 'fa-bolt']],
+      EXPIRED:  [['extend', 'Extend 1 year', 'btn-secondary', 'fa-calendar-plus']]
+    };
+    // A completed hold must not also count as a click. Only the click that fires right as the
+    // hold's pointer is released is ignored (desktop may fire none, since the row re-renders).
+    var holdTimer = null, holdStart = null, holdFired = false, holdUpAt = 0, bulkBusy = false, bulkArmed = null;
+    $('rows').addEventListener('pointerdown', function (e) {
+      var tr = e.target.closest('tr[data-open]');
+      if (!tr || e.target.closest('button') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      holdStart = [e.clientX, e.clientY];
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(function () {
+        var p = find(tr.dataset.open);
+        if (!p || !BULK[p.state]) { toast('Used passes can\'t be bulk-edited'); return; }
+        if (navigator.vibrate) navigator.vibrate(30);
+        holdFired = true;
+        if (!state.sel.on) startSel(p); else toggleSel(p.code);
+      }, 500);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { $('rows').addEventListener(t, function () { clearTimeout(holdTimer); }); });
+    document.addEventListener('pointerup', function () { if (holdFired) { holdFired = false; holdUpAt = Date.now(); } }, true);
+    $('rows').addEventListener('pointermove', function (e) {
+      if (holdStart && Math.hypot(e.clientX - holdStart[0], e.clientY - holdStart[1]) > 10) clearTimeout(holdTimer);   // scrolling
+    });
+    $('rows').addEventListener('contextmenu', function (e) { if (e.target.closest('tr[data-open]')) e.preventDefault(); });
+
+    function startSel(p) {
+      state.sel = { on: true, type: p.state, codes: [p.code] };
+      renderSel();
+    }
+    function endSel() {
+      state.sel = { on: false, type: null, codes: [] }; bulkArmed = null;
+      renderSel();
+    }
+    function toggleSel(code) {
+      var p = find(code); if (!p || bulkBusy) return;
+      if (p.state !== state.sel.type) return;              // other types are greyed out
+      var i = state.sel.codes.indexOf(code);
+      if (i === -1) state.sel.codes.push(code); else state.sel.codes.splice(i, 1);
+      if (!state.sel.codes.length) return endSel();
+      renderSel();
+    }
+    function renderSel() {
+      var on = state.sel.on;
+      document.querySelector('table').classList.toggle('sel-mode', on);
+      $('bulkBar').classList.toggle('open', on); $('bulkBar').setAttribute('aria-hidden', String(!on));
+      $('bulkCancel').disabled = false; $('bulkAll').disabled = false;   // re-enable after a bulk run
+      document.querySelector('main').style.paddingBottom = on ? '130px' : '';
+      renderRows();
+      if (!on) return;
+      var n = state.sel.codes.length, type = state.sel.type;
+      $('bulkCount').textContent = n + ' ' + LABEL[type].toLowerCase() + ' selected';
+      var avail = filtered().filter(function (p) { return p.state === type; }).length;
+      $('bulkAll').classList.toggle('hidden', avail <= n);
+      $('bulkAll').textContent = 'Select all (' + avail + ')';
+      $('bulkActs').innerHTML = (BULK[type] || []).map(function (a) {
+        return '<button class="btn btn-sm ' + a[2] + '" data-bulk="' + a[0] + '" type="button"><i class="fa-solid ' + a[3] + '"></i>' + a[1] + '</button>';
+      }).join('');
+    }
+    $('bulkAll').addEventListener('click', function () {
+      state.sel.codes = filtered().filter(function (p) { return p.state === state.sel.type; }).map(function (p) { return p.code; });
+      renderSel();
+    });
+    $('bulkCancel').addEventListener('click', function () { if (!bulkBusy) endSel(); });
+    $('bulkActs').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-bulk]'); if (!b || bulkBusy) return;
+      var act = b.dataset.bulk, codes = state.sel.codes.slice();
+      if (act === 'revoke' && bulkArmed !== b) {       // second tap confirms
+        bulkArmed = b; b.classList.add('confirm'); b.innerHTML = '<i class="fa-solid fa-ban"></i>Revoke ' + codes.length + '?';
+        setTimeout(function () { if (bulkArmed === b) { bulkArmed = null; renderSel(); } }, 4000);
+        return;
+      }
+      bulkArmed = null; bulkBusy = true;
+      Array.prototype.forEach.call(document.querySelectorAll('#bulkBar button'), function (x) { x.disabled = true; });
+      var done = 0, failed = 0, verb = b.textContent.trim();
+      codes.reduce(function (chain, code) {
+        return chain.then(function () {
+          b.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>' + verb + ' ' + (done + failed + 1) + '/' + codes.length;
+          return api(act, { code: code }).then(function (res) { upsert(res.pass); done++; })
+                                         .catch(function () { failed++; });
+        });
+      }, Promise.resolve()).then(function () {
+        bulkBusy = false;
+        toast(verb + ': ' + done + ' done' + (failed ? ', ' + failed + ' failed' : ''));
+        endSel();
+      });
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && state.sel.on && !bulkBusy) endSel(); });
+
     var armed = null;   // revoke needs a second click within 4 s
     function rowAct(btn) {
       var act = btn.dataset.rowAct, code = btn.dataset.code;
@@ -688,10 +836,12 @@
       var by = {};
       state.data.passes.forEach(function (p) {
         if (!p.batch) return;
-        var b = by[p.batch] || (by[p.batch] = { batch: p.batch, total: 0, printable: 0, used: 0, createdAt: '' });
+        var b = by[p.batch] || (by[p.batch] = { batch: p.batch, total: 0, printable: 0, used: 0, revoked: 0, expired: 0, createdAt: '' });
         b.total++;
-        if (p.state === 'INACTIVE' || p.state === 'ACTIVE') b.printable++;
+        if (p.state === 'INACTIVE' || p.state === 'ACTIVE') b.printable++;   // "free": can still be handed out / claimed
         if (p.state === 'USED') b.used++;
+        if (p.state === 'REVOKED') b.revoked++;
+        if (p.state === 'EXPIRED') b.expired++;
         if ((p.createdAt || '') > b.createdAt) b.createdAt = p.createdAt || '';
       });
       return Object.keys(by).map(function (k) { return by[k]; })
@@ -703,8 +853,13 @@
         var by = (b.batch.split(' · ')[1] || '');
         return '<div class="set-row' + (state.filter.batch === b.batch ? ' on' : '') + '">' +
           '<div class="what"><strong>' + esc(fmt(b.createdAt, true) || b.batch) + '</strong>' +
-          '<div class="sub">' + (by ? 'by ' + esc(by) + ' · ' : '') + b.total + ' card' + (b.total === 1 ? '' : 's') +
-          ' · ' + b.printable + ' printable' + (b.used ? ' · ' + b.used + ' used' : '') + '</div></div>' +
+          (by ? '<div class="sub">by ' + esc(by) + '</div>' : '') +
+          '<div class="pills"><span class="pill">' + b.total + ' pass' + (b.total === 1 ? '' : 'es') + '</span>' +
+          '<span class="pill p-used"><span class="dot st-USED"></span>' + b.used + ' used</span>' +
+          '<span class="pill p-free"><span class="dot st-ACTIVE"></span>' + b.printable + ' free</span>' +
+          (b.revoked ? '<span class="pill"><span class="dot st-REVOKED"></span>' + b.revoked + ' revoked</span>' : '') +
+          (b.expired ? '<span class="pill"><span class="dot st-EXPIRED"></span>' + b.expired + ' expired</span>' : '') +
+          '</div></div>' +
           '<div class="acts">' +
           '<button class="btn btn-secondary btn-sm" data-set-show="' + esc(b.batch) + '" type="button"><i class="fa-solid fa-list"></i>' +
             (state.filter.batch === b.batch ? 'Showing' : 'Show passes') + '</button>' +
@@ -712,7 +867,7 @@
             (b.printable ? '' : ' aria-disabled="true" style="opacity:.45;pointer-events:none"') +
             '><i class="fa-solid fa-print"></i>Open print sheet</a>' +
           '</div></div>';
-      }).join('') : '<p class="hint" style="margin:6px 0 10px">No sets yet — create one with <strong>New passes set</strong>.</p>';
+      }).join('') : '<p class="hint" style="margin:6px 0 10px">No sets yet — create one with <strong>Create passes (8)</strong>.</p>';
       var more = $('setsMore');
       more.classList.toggle('hidden', list.length <= SETS_SHOWN);
       more.textContent = setsAll ? 'Show fewer' : 'Show all (' + list.length + ')';
@@ -751,7 +906,7 @@
       var btn = $('newSheetBtn');
       if (!sheetArmed) {   // two-step confirm, no browser dialogs
         sheetArmed = true; btn.classList.add('confirming'); btn.innerHTML = '<i class="fa-solid fa-check"></i>Create 8 passes?';
-        setTimeout(function () { if (sheetArmed) { sheetArmed = false; btn.classList.remove('confirming'); btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set (set of 8)'; } }, 4000);
+        setTimeout(function () { if (sheetArmed) { sheetArmed = false; btn.classList.remove('confirming'); btn.innerHTML = '<i class="fa-solid fa-plus"></i>Create passes (8)'; } }, 4000);
         return;
       }
       sheetArmed = false; btn.classList.remove('confirming'); btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch spin"></i>Creating…';
@@ -764,7 +919,7 @@
         if (tab) { tab.location.href = printUrl(res.batch); toast('8 new passes created — print sheet opened in a new tab'); }
         else toast('8 new passes created — open its print sheet under Passes sets');
       }).catch(function (err) { if (tab) tab.close(); toast(err.message); })
-        .then(function () { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>New passes set (set of 8)'; });
+        .then(function () { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus"></i>Create passes (8)'; });
     });
 
     // ── drawer ──────────────────────────────────────────
