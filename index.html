@@ -279,6 +279,8 @@
     .drawer.open { transform: none; }
     .drawer header { display: flex; align-items: center; gap: 10px; padding: 18px 20px; border-bottom: 1px solid var(--line);
                      padding-top: calc(18px + env(safe-area-inset-top)); }
+    .drawer header .d-title { font-size: 16px; font-weight: 600; }
+    .d-card { margin: 2px 0 22px; }
     .drawer header .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; font-size: 18px; letter-spacing: .05em; }
     #dCopy { margin-right: auto; }
     .icon-btn { background: none; border: none; width: 36px; height: 36px; border-radius: 8px; color: var(--n80); font-size: 18px; }
@@ -460,8 +462,7 @@
   <div class="scrim" id="scrim"></div>
   <aside class="drawer" id="drawer" aria-hidden="true">
     <header>
-      <span class="code" id="dCode"></span><span id="dCopy"></span>
-      <span class="chip" id="dChip"></span>
+      <span class="d-title">Pass details</span><span id="dCopy"></span>
       <button class="icon-btn" id="dClose" type="button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </header>
     <div class="body" id="dBody"></div>
@@ -987,9 +988,7 @@
     function openDrawer(code) {
       var p = find(code); if (!p) return;
       state.open = code;
-      $('dCode').textContent = p.code;
       $('dCopy').innerHTML = copyBtn(p.code);
-      $('dChip').className = 'chip st-' + p.state; $('dChip').textContent = LABEL[p.state];
       var t = [];
       t.push(['', 'Created', fmt(p.createdAt, true) + (p.batch ? ' · batch ' + esc(p.batch) : '')]);
       if (p.activatedAt) t.push(['k-active', 'Activated by ' + esc(p.activatedBy) + (p.givenTo ? ' for <strong>' + esc(p.givenTo) + '</strong>' : ''),
@@ -999,7 +998,7 @@
       if (p.revokedAt) t.push(['k-revoked', 'Revoked by ' + esc(p.revokedBy), fmt(p.revokedAt, true)]);
       t.push([p.state === 'EXPIRED' ? 'k-expired' : '', p.state === 'EXPIRED' ? 'Expired' : 'Expires', fmt(p.expiresAt)]);
 
-      var h = '<h3>History</h3><ul class="timeline">' + t.map(function (x) {
+      var h = '<div class="d-card">' + passCard(p) + '</div><h3>History</h3><ul class="timeline">' + t.map(function (x) {
         return '<li class="' + x[0] + '">' + x[1] + '<div class="when">' + x[2] + '</div></li>';
       }).join('') + '</ul>';
 
@@ -1220,16 +1219,20 @@
       b.innerHTML = mode === 'next' ? 'Scan next pass<i class="fa-solid fa-camera"></i>'
                   : mode === 'reactivate' ? '<i class="fa-solid fa-bolt"></i>Re-activate' : '<i class="fa-solid fa-bolt"></i>Activate';
     }
+    /** Credit-card replica of the printed pass back (scan screen + details panel). */
+    function passCard(p) {
+      return '<div class="pass-visual" aria-label="Visitor Pass ' + esc(p.code) + '">' +
+        '<div class="pv-top"><span class="pv-chip">VISITOR PASS</span>' + chip(p.state) + '</div>' +
+        '<div class="pv-code">' + esc(p.code) + '</div>' +
+        '<div class="pv-bottom"><img src="https://cdn.ahlab.org/media/site/ahllogo_white.png" alt="Augmented Human Lab" />' +
+        (p.expiresAt ? '<span class="pv-valid">Valid to ' + new Date(p.expiresAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Singapore', month: '2-digit', year: 'numeric' }) + '</span>' : '') +
+        '</div></div>';
+    }
     function showActState(p, kind, html, go) {
       $('actLink').classList.toggle('hidden', !(p && p.state === 'ACTIVE'));   // share the claim link for an active pass
       var el = $('actState');
       el.className = 'act-state show';
-      var card = p ? '<div class="pass-visual" aria-label="Visitor Pass ' + esc(p.code) + '">' +
-          '<div class="pv-top"><span class="pv-chip">VISITOR PASS</span>' + chip(p.state) + '</div>' +
-          '<div class="pv-code">' + esc(p.code) + '</div>' +
-          '<div class="pv-bottom"><img src="https://cdn.ahlab.org/media/site/ahllogo_white.png" alt="Augmented Human Lab" />' +
-          (p.expiresAt ? '<span class="pv-valid">Valid to ' + new Date(p.expiresAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Singapore', month: '2-digit', year: 'numeric' }) + '</span>' : '') +
-          '</div></div>' : '';
+      var card = p ? passCard(p) : '';
       el.innerHTML = card + '<div class="act-info' + (kind ? ' ' + kind : '') + '">' + html + '</div>';
       if (go === 'manage') return setGo('manage', true);
       setGo(go || 'activate', !!go && go !== 'none');
