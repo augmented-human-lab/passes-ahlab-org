@@ -81,7 +81,7 @@
     }
     .toolbar .brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
     .toolbar .brand img { height: 28px; width: auto; display: block; }
-    .toolbar h1 { font-family: var(--font-display); font-weight: 500; font-size: 16px; }
+    .toolbar h1 { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
     .toolbar .meta { color: #AAAFB6; font-size: 13px; }
     .toolbar button {
       background: linear-gradient(221deg, var(--grad-start) 0%, var(--grad-end) 100%);
@@ -102,8 +102,9 @@
       .toolbar .meta { display: none; }
       .toolbar .actions { flex: 1 1 100%; display: grid; grid-template-columns: 1fr 1fr; }   /* Print | Download: equal halves */
       .toolbar .actions button { justify-content: center; }
-      #downloadBtn { width: 100%; }
-      .instructions { margin: 12px 8px 0; font-size: 12.5px; padding: 12px 14px; }
+      #downloadBtn { width: 100%; position: relative; }
+      #downloadBtn .caret { position: absolute; right: 14px; top: 50%; margin: -6px 0 0; }   /* ▾ at the far right */
+      .instructions { font-size: 12.5px; padding: 12px 14px; }
     }
 
     /* Download ▾ dropdown */
@@ -385,7 +386,10 @@
     (function () {
       function fit() {
         var a4 = 210 * 96 / 25.4, avail = document.documentElement.clientWidth - 16;
-        document.getElementById('sheets').style.zoom = Math.min(1, avail / a4).toFixed(4);
+        var z = Math.min(1, avail / a4);
+        document.getElementById('sheets').style.zoom = z.toFixed(4);
+        var ins = document.querySelector('.instructions');   // same width as the (shrunk) sheet
+        if (ins) { ins.style.maxWidth = (a4 * z).toFixed(1) + 'px'; ins.style.marginTop = z < 1 ? '12px' : ''; }
       }
       fit(); addEventListener('resize', fit);
     })();
