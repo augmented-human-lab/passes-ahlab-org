@@ -188,7 +188,12 @@
     .set-row .what { flex: 1 1 240px; min-width: 0; }
     .set-row .what strong { font-size: 15px; }
     .set-row .what .sub { color: var(--n70); font-size: 13px; }
+    .set-row .set-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
     .set-row .acts { display: flex; gap: 8px; }
+    @media (max-width: 680px) {   /* phone: Show passes | Open print sheet, equal halves, full card width */
+      .set-row .acts { flex: 1 1 100%; display: grid; grid-template-columns: 1fr 1fr; }
+      .set-row .acts .btn { justify-content: center; padding: 10px 8px; }
+    }
     .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
     .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--n80); background: var(--bg);
             border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
@@ -211,6 +216,13 @@
     .list-tools .search { flex: 1 1 220px; position: relative; }
     .list-tools .search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--n60); font-size: 14px; }
     .list-tools .search input { padding-left: 34px; }
+    .filter-chips { display: contents; }
+    .fchip { display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid rgba(97,0,255,.3); background: rgba(97,0,255,.06);
+             color: var(--accent); border-radius: 999px; padding: 7px 12px 7px 14px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+             transition: background .15s; }
+    .fchip:hover { background: rgba(97,0,255,.12); }
+    .fchip .x { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: rgba(97,0,255,.12); font-size: 11px; margin-left: auto; }
+    @media (max-width: 680px) { .fchip { flex: 1 1 100%; } }
     .list-tools select { border: 1.5px solid var(--line-2); border-radius: 10px; padding: 10px 12px; background: #fff; font-size: 14px; max-width: 100%; }
     .count-note { color: var(--n70); font-size: 13px; margin-left: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -442,16 +454,8 @@
         <div class="list-tools">
           <div class="search"><i class="fa-solid fa-magnifying-glass"></i>
             <input class="text-input" id="searchInput" placeholder="Search or type a pass code…" autocapitalize="characters" spellcheck="false" /></div>
-          <select id="stateSelect" aria-label="Status">
-            <option value="ALL">All statuses</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="ACTIVE">Active</option>
-            <option value="USED">Used</option>
-            <option value="REVOKED">Revoked</option>
-            <option value="EXPIRED">Expired</option>
-          </select>
-          <select id="batchSelect" aria-label="Batch"><option value="">All batches</option></select>
           <span class="count-note" id="countNote"></span>
+          <div class="filter-chips" id="filterChips"></div>
         </div>
         <table>
           <thead><tr><th>Code</th><th>Status</th><th>Holder</th><th class="col-batch">Batch</th><th class="col-expires">Expires</th><th class="col-act"></th></tr></thead>
@@ -652,14 +656,23 @@
       }).join('');
     }
 
+    /** Active filters as removable chips (set from "Show passes", status from the tiles). */
     function renderBatches() {
-      var sel = $('batchSelect'), cur = state.filter.batch, seen = {}, batches = [];
-      state.data.passes.forEach(function (p) { if (p.batch && !seen[p.batch]) { seen[p.batch] = 1; batches.push(p.batch); } });
-      batches.sort().reverse();
-      sel.innerHTML = '<option value="">All batches</option>' + batches.map(function (b) {
-        return '<option value="' + esc(b) + '"' + (b === cur ? ' selected' : '') + '>' + esc(b) + '</option>';
-      }).join('');
+      var f = state.filter, h = '';
+      if (f.batch) {
+        var created = (state.data.passes.find(function (p) { return p.batch === f.batch; }) || {}).createdAt;
+        h += '<button class="fchip" data-clear="batch" type="button"><i class="fa-solid fa-layer-group"></i>Set: ' +
+             esc(fmt(created, true) || f.batch) + '<span class="x"><i class="fa-solid fa-xmark"></i></span></button>';
+      }
+      if (f.state !== 'ALL') h += '<button class="fchip" data-clear="state" type="button"><span class="dot st-' + f.state + '"></span>' +
+             LABEL[f.state] + '<span class="x"><i class="fa-solid fa-xmark"></i></span></button>';
+      $('filterChips').innerHTML = h;
     }
+    $('filterChips').addEventListener('click', function (e) {
+      var c = e.target.closest('[data-clear]'); if (!c) return;
+      if (c.dataset.clear === 'batch') state.filter.batch = ''; else state.filter.state = 'ALL';
+      renderAll();
+    });
 
     function filtered() {
       var f = state.filter, q = f.q.toLowerCase();
@@ -704,10 +717,8 @@
     $('stats').addEventListener('click', function (e) {
       var b = e.target.closest('[data-state]'); if (!b) return;
       state.filter.state = state.filter.state === b.dataset.state ? 'ALL' : b.dataset.state;
-      $('stateSelect').value = state.filter.state; renderStats(); renderRows();
+      renderStats(); renderBatches(); renderRows();
     });
-    $('stateSelect').addEventListener('change', function (e) { state.filter.state = e.target.value; renderStats(); renderRows(); });
-    $('batchSelect').addEventListener('change', function (e) { state.filter.batch = e.target.value; renderSets(); renderRows(); });
     $('searchInput').addEventListener('input', function (e) {
       var v = e.target.value.trim(), c = normCode(v);
       if (c && /[/?=]/.test(v)) { e.target.value = c; v = c; }   // pasted QR link → its code
@@ -716,7 +727,7 @@
     /** Show one pass in the list (clears other filters) and flash its row. */
     function focusCode(code) {
       state.filter = { state: 'ALL', q: code, batch: '' };
-      $('searchInput').value = code; $('stateSelect').value = 'ALL';
+      $('searchInput').value = code;
       renderAll();
       var row = document.querySelector('tr[data-open="' + code + '"]');
       if (row) { row.classList.add('flash'); row.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
@@ -916,8 +927,8 @@
       $('sets').innerHTML = list.length ? shown.map(function (b) {
         var by = (b.batch.split(' · ')[1] || '');
         return '<div class="set-row' + (state.filter.batch === b.batch ? ' on' : '') + '">' +
-          '<div class="what"><strong>' + esc(fmt(b.createdAt, true) || b.batch) + '</strong>' +
-          (by ? '<div class="sub">by ' + esc(by) + '</div>' : '') +
+          '<div class="what"><div class="set-title"><strong>' + esc(fmt(b.createdAt, true) || b.batch) + '</strong>' +
+          (by ? '<span class="sub">by ' + esc(by) + '</span>' : '') + '</div>' +
           '<div class="pills"><span class="pill">' + b.total + ' pass' + (b.total === 1 ? '' : 'es') + '</span>' +
           '<span class="pill p-used"><span class="dot st-USED"></span>' + b.used + ' used</span>' +
           '<span class="pill p-free"><span class="dot st-ACTIVE"></span>' + b.printable + ' free</span>' +
@@ -926,7 +937,7 @@
           '</div></div>' +
           '<div class="acts">' +
           '<button class="btn btn-secondary btn-sm" data-set-show="' + esc(b.batch) + '" type="button"><i class="fa-solid fa-list"></i>' +
-            (state.filter.batch === b.batch ? 'Showing' : 'Show passes') + '</button>' +
+            'Show passes</button>' +
           '<a class="btn btn-primary btn-sm" href="' + printUrl(b.batch) + '" target="_blank" rel="noopener"' +
             (b.printable ? '' : ' aria-disabled="true" style="opacity:.45;pointer-events:none"') +
             '><i class="fa-solid fa-print"></i>Open print sheet</a>' +
