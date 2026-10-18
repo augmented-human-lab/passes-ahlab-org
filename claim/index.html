@@ -255,19 +255,44 @@
       font-size: 16px; font-weight: 600; color: var(--color-accent);
       padding: 12px 22px; margin: 14px 0 20px;
     }
-    /* ── Two-column form on desktop ──────────── */
-    .note-wide { display: none; }
-    @media (min-width: 900px) {
-      .main.wide { max-width: 1000px; }
-      .main.wide .form-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 44px; align-items: start; }
-      .main.wide .intro { padding-top: 4px; }
-      .main.wide .intro .desc { margin-bottom: 20px; }
-      .main.wide .intro .token-chip { margin-bottom: 20px; }
-      .main.wide .note-wide { display: flex; margin: 0; }
-      .main.wide .note-narrow { display: none; }
-      .main.wide .field { margin-bottom: 18px; }
-      .main.wide .btn-submit { margin-top: 6px; }
+    /* ── Compact form (fits one phone screen) ── */
+    .form-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .form-head .section-label { margin-bottom: 0; }
+    .form-head .token-chip { margin-bottom: 0; padding: 5px 12px; font-size: 12.5px; }
+    #formPanel .row { grid-template-columns: 1fr 1fr; gap: 12px; }
+    #formPanel .field { margin-bottom: 16px; }
+    #formPanel .field label { margin-bottom: 6px; }
+    #formPanel .field input[type="text"], #formPanel .field input[type="email"] { padding: 10px 14px; }
+    #formPanel .field .hint { margin-top: 5px; }
+    #formPanel .field label .opt { font-weight: 400; color: var(--neutral-60); }
+    .submit-row { display: flex; gap: 10px; margin-top: 6px; }
+    .submit-row .btn-submit { flex: 1; width: auto; }
+    .btn-info { flex: none; width: 52px; border-radius: var(--radius-sm); border: 1.5px solid var(--neutral-30);
+                background: var(--neutral-10); color: var(--color-accent); font-size: 17px; cursor: pointer;
+                transition: background var(--ease-fast), border-color var(--ease-fast); }
+    .btn-info:hover { background: rgba(97,0,255,.06); border-color: rgba(97,0,255,.3); }
+    @media (max-width: 560px) and (max-height: 720px) {   /* small phones: trim the outer spacing */
+      .main { padding-top: 16px; padding-bottom: 16px; }
+      .footer-note { padding-top: 10px; }
     }
+    @media (max-width: 560px) {
+      #formPanel { padding: 22px 18px 20px; }
+      #formPanel .field label { font-size: 13.5px; }
+    }
+
+    /* ── Guest-account info overlay (frosted glass) ── */
+    .info-overlay { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center;
+                    padding: 24px; background: rgba(244,247,249,.55);
+                    -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); }
+    .info-overlay.open { display: flex; animation: fadeIn .2s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .info-card { max-width: 420px; width: 100%; background: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.9);
+                 border-radius: 18px; box-shadow: 0 20px 60px rgba(14,15,17,.18); padding: 30px 26px 24px; text-align: center; }
+    .info-card .state-icon { width: 60px; height: 60px; font-size: 24px; margin-bottom: 16px; }
+    .info-card h3 { font-family: var(--font-display); font-size: 21px; font-weight: 500; margin-bottom: 10px; }
+    .info-card p { color: var(--neutral-80); font-size: 15px; line-height: 1.6; margin-bottom: 10px; }
+    .info-card .close { margin-top: 12px; background: var(--gradient-primary); color: #fff; border: none; border-radius: 999px;
+                        padding: 11px 28px; font-family: var(--font-display); font-size: 15px; font-weight: 600; cursor: pointer; }
 
     /* ── Status / loading panels ──────────────── */
     #statePanel, #loadingPanel { display: none; text-align: center; }
@@ -318,25 +343,11 @@
 
       <!-- Form -->
       <section class="section" id="formPanel">
-        <div class="form-grid">
-        <div class="intro">
-        <span class="section-label"><span class="icon"><i class="fa-solid fa-id-card"></i></span> Visitor Pass</span>
-        <h2>Welcome to the lab!</h2>
-        <p class="desc">
-          Your Visitor Pass gets you an <strong>@ahlab.org</strong> account with access to our
-          Slack and lab calendar. Tell us a little about yourself and we'll set it up right away.
-        </p>
-
-        <div class="token-chip"><i class="fa-solid fa-qrcode"></i> <span id="tokenLabel">…</span></div>
-
-        <div class="note note-wide">
-          <i class="fa-solid fa-circle-info"></i>
-          <span>Guest accounts have limited Workspace permissions and may be removed once
-          you're done at the lab. Your pass works exactly once.</span>
-        </div>
+        <div class="form-head">
+          <span class="section-label"><span class="icon"><i class="fa-solid fa-id-card"></i></span> Visitor Pass</span>
+          <div class="token-chip"><i class="fa-solid fa-qrcode"></i> <span id="tokenLabel">…</span></div>
         </div>
 
-        <div class="fields">
         <div class="form-error" id="formError"></div>
 
         <div class="row">
@@ -355,25 +366,22 @@
         <div class="field" id="f-personalEmail">
           <label><i class="fa-solid fa-envelope"></i>Personal Email<span class="req">*</span></label>
           <input type="email" id="personalEmail" placeholder="you@example.com" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" maxlength="254" />
-          <div class="hint">We'll send your guest credentials here.</div>
+          <div class="hint">We'll send your login details here.</div>
           <div class="error-msg">Please enter a valid email address.</div>
         </div>
 
         <div class="field" id="f-affiliation">
-          <label><i class="fa-solid fa-building-columns"></i>Affiliation / Organisation</label>
-          <input type="text" id="affiliation" placeholder="University, company, or lab (optional)" autocomplete="organization" maxlength="100" />
+          <label><i class="fa-solid fa-building-columns"></i>Affiliation <span class="opt">(optional)</span></label>
+          <input type="text" id="affiliation" placeholder="University, company or lab" autocomplete="organization" maxlength="100" />
         </div>
 
-        <div class="note note-narrow">
-          <i class="fa-solid fa-circle-info"></i>
-          <span>Guest accounts have limited Workspace permissions and may be removed once
-          you're done at the lab. Your pass works exactly once.</span>
-        </div>
-
-        <button class="btn-submit" id="submitBtn" onclick="submit()" disabled>
-          <i class="fa-solid fa-wand-magic-sparkles" style="margin-right:8px"></i>Create My Account
-        </button>
-        </div>
+        <div class="submit-row">
+          <button class="btn-submit" id="submitBtn" onclick="submit()" disabled>
+            <i class="fa-solid fa-wand-magic-sparkles" style="margin-right:8px"></i>Create My Account
+          </button>
+          <button class="btn-info" id="infoBtn" type="button" aria-label="About your guest account" title="About your guest account">
+            <i class="fa-solid fa-question"></i>
+          </button>
         </div>
       </section>
 
@@ -394,6 +402,16 @@
     </div>
 
   </main>
+
+  <div class="info-overlay" id="infoOverlay" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+    <div class="info-card">
+      <div class="state-icon"><i class="fa-solid fa-user-shield"></i></div>
+      <h3 id="infoTitle">About your guest account</h3>
+      <p>Your <strong>@ahlab.org</strong> guest account comes with Slack and the lab calendar, and has limited Google Workspace permissions.</p>
+      <p>It's set up for your time with us, so we may close it a while after your visit wraps up. Each Visitor Pass works once.</p>
+      <button class="close" id="infoClose" type="button">Got it</button>
+    </div>
+  </div>
 
   <footer class="footer-note">
       Augmented Human Lab · National University of Singapore<br>
@@ -428,8 +446,7 @@
       ['loadingPanel', 'statePanel', 'formPanel', 'successPanel'].forEach(function (p) {
         document.getElementById(p).classList.toggle('visible', p === id);
       });
-      document.querySelector('.main').classList.toggle('wide', id === 'formPanel');   // 2 columns on desktop
-    }
+          }
     function showState(kind, icon, title, html) {
       var ic = document.getElementById('stateIcon');
       ic.className = 'state-icon' + (kind ? ' ' + kind : '');
@@ -518,6 +535,13 @@
         if (e.key === 'Enter' && !document.getElementById('submitBtn').disabled) submit();
       });
     });
+
+    // Guest-account info overlay
+    function setInfo(open) { document.getElementById('infoOverlay').classList.toggle('open', open); if (open) document.getElementById('infoClose').focus(); }
+    document.getElementById('infoBtn').addEventListener('click', function () { setInfo(true); });
+    document.getElementById('infoClose').addEventListener('click', function () { setInfo(false); });
+    document.getElementById('infoOverlay').addEventListener('click', function (e) { if (e.target.id === 'infoOverlay') setInfo(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setInfo(false); });
 
     // Boot: no code → ask them to scan; else check the pass, then show the form or why not.
     if (!TOKEN) {
