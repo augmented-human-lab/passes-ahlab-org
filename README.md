@@ -6,10 +6,14 @@ Admin console for AHL **Visitor Passes**, the printed credit-card cards that giv
 
 ## What admins do here
 
-- **Activate a pass at handover:** find it in the list (type its code into search, or on a phone
-  tap **Scan** to read the QR) and press **Activate** on its row. The holder then has 7 days to
-  claim their account; an unclaimed pass switches back off by itself. **Revoke** sits on active
-  rows (second click confirms), and a revoked pass can be activated again.
+- **Activate a pass at handover:** press **Activate a pass 📷**. The screen opens the camera
+  (phones; any device with a camera) and a code box. Scanning a card's QR fills the box, or type
+  the code printed under it. The pass's state shows straight away (ready, already active,
+  revoked, used, expired, not found) and **Activate** is enabled only when it makes sense
+  (**Re-activate** for a revoked pass). Then **Scan next pass**. The holder has 7 days to claim;
+  an unclaimed pass switches back off by itself.
+- **Row actions:** **Activate** on inactive and revoked passes; **Deactivate** (e.g. undo a test
+  activation) and **Revoke** (second click confirms) on active passes.
 - **Track every pass:** inactive, active, used, revoked and expired, with search, a
   per-batch filter and a history for each pass (created → activated by → claimed → revoked), and a copy button next to each code.
 - **New passes set:** creates 8 inactive passes and opens the print view (Print, Download PDF,
