@@ -11,7 +11,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Augmented Human Lab" />
   <meta property="og:title" content="Your AHL Visitor Pass" />
-  <meta property="og:description" content="Scan your Visitor Pass to get an @ahlab.org guest account with the lab's Slack and calendar — it takes about 30 seconds." />
+  <meta property="og:description" content="Scan your Visitor Pass to get an @ahlab.org guest account with the lab's Slack and calendar. It takes about 30 seconds." />
   <meta property="og:url" content="https://passes.ahlab.org/claim/" />
   <meta property="og:image" content="https://passes.ahlab.org/og-claim.png" />
   <meta property="og:image:width" content="1200" />
@@ -123,7 +123,10 @@
     .appbar-title strong { font-weight: 600; }
 
     /* ── Main ────────────────────────────────── */
-    .main { max-width: 560px; margin: 32px auto 0; padding: 0 20px 80px; }
+    /* card + footer centred vertically under the app bar; a tall form just starts at the top */
+    body { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+    .main { flex: 1; width: 100%; max-width: 560px; margin: 0 auto; padding: 36px 20px;
+            display: flex; flex-direction: column; justify-content: center; }
 
     .form-card {
       background: var(--neutral-10);
@@ -295,6 +298,7 @@
       <section class="section" id="statePanel">
         <div class="state-icon" id="stateIcon"><i class="fa-solid fa-qrcode"></i></div>
         <h2 id="stateTitle"></h2>
+        <div class="token-chip" id="stateCode" style="margin:10px 0 16px"><i class="fa-solid fa-qrcode"></i> <span></span></div>
         <p class="desc" id="stateMsg" style="margin-bottom:0"></p>
       </section>
 
@@ -358,7 +362,7 @@
           along with the Slack invite and a link to add the lab calendar.
         </p>
         <p class="desc" style="font-size:13.5px;color:var(--neutral-60)">
-          Keep the pass — it's yours. Welcome to the Augmented Human Lab!
+          Keep the pass. It's yours. Welcome to the Augmented Human Lab!
         </p>
       </section>
     </div>
@@ -374,7 +378,6 @@
     var PROD_API = 'https://script.google.com/macros/s/AKfycbwjUs3ZL8jfmclSfxAVKIJSwhNdV84gyWqRpFwM9FHCHaUCL15lW-eh7hIM0MOGp-yb/exec';
     var DEV_API  = 'https://script.google.com/macros/s/AKfycbynkdtZwAc1nRCNh4caZOZKb7DyXxpiheLr21r65r_QLoNnAt7Pjgjfa1QM7JLJ1i4K/exec';
     var API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? DEV_API : PROD_API;
-    var CONTACT = 'ariel@ahlab.org';
     function api(body) {
       return fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) })
         .then(function (r) { return r.json(); });
@@ -405,27 +408,27 @@
       ic.innerHTML = '<i class="fa-solid ' + icon + '"></i>';
       document.getElementById('stateTitle').textContent = title;
       document.getElementById('stateMsg').innerHTML = html;
+      var chip = document.getElementById('stateCode');   // which pass this is about
+      chip.style.display = TOKEN ? '' : 'none';
+      chip.querySelector('span').textContent = TOKEN;
       panel('statePanel');
     }
-    var contactLink = '<a href="mailto:' + CONTACT + '">' + CONTACT + '</a>';
 
     // Same messages as passBlockedPage_() in Code.js (the old script.google.com page).
     function showPassState(info) {
-      var code = '<strong>' + esc(info.code || TOKEN) + '</strong>';
       if (info.state === 'ACTIVE') { panel('formPanel'); validate(false); return; }
       if (info.state === 'INACTIVE') return showState('', 'fa-hourglass-half', 'Pass Not Activated',
-        (info.lapsed ? 'This Visitor Pass was activated but not claimed within ' + (info.activationDays || 7) + ' days, so it was switched off.'
-                     : 'This Visitor Pass hasn\'t been activated yet.') +
-        '<br><br>Please ask the lab member who gave it to you to activate it — then scan it again. Questions? ' + contactLink + '.');
+        (info.lapsed ? 'It was activated but not claimed within ' + (info.activationDays || 7) + ' days, so it switched off again.<br><br>' : '') +
+        'Please ask the lab member who gave it to you to activate it, then scan it again.');
       if (info.state === 'USED') return showState('warn', 'fa-circle-check', 'Pass Already Used',
-        'This Visitor Pass (' + code + ') has already been redeemed' + (info.usedAt ? ' on ' + fmtDay(info.usedAt) : '') +
-        '.<br><br>Each pass creates exactly one guest account. Keep the pass as a memento of your time with us! If this wasn\'t you, contact ' + contactLink + '.');
+        (info.usedAt ? 'Redeemed on ' + fmtDay(info.usedAt) + '. ' : '') +
+        'Each pass creates exactly one guest account. Keep the pass as a memento of your time with us!');
       if (info.state === 'REVOKED') return showState('err', 'fa-ban', 'Pass Revoked',
-        'This Visitor Pass (' + code + ') has been revoked and can\'t be used.<br><br>If you think this is a mistake, contact ' + contactLink + '.');
+        'It can\'t be used. If you think this is a mistake, please get in touch.');
       if (info.state === 'EXPIRED') return showState('warn', 'fa-calendar-xmark', 'Pass Expired',
-        'This Visitor Pass expired on <strong>' + fmtDay(info.expiresAt) + '</strong>.<br><br>Please ask a lab member for a current pass, or contact ' + contactLink + '.');
+        'It expired on <strong>' + fmtDay(info.expiresAt) + '</strong>. Please ask a lab member for a current pass.');
       showState('err', 'fa-circle-question', 'Invalid Pass',
-        'This pass code (' + code + ') isn\'t recognised.<br><br>The QR may be damaged. Please ask a lab member, or contact ' + contactLink + '.');
+        'We don\'t recognise this code. The QR may be damaged. Please ask a lab member.');
     }
 
     // ── validation ───────────────────────────────────────────
@@ -439,7 +442,7 @@
       firstName: function (v) {
         if (!v) return 'Please enter your first name.';
         if (!NAME_RE.test(v)) return 'Use letters only (spaces, - and \' are fine).';
-        if (!asciiHandle(v)) return 'Please include your name in Latin letters (A–Z) — it becomes your account address.';
+        if (!asciiHandle(v)) return 'Please include your name in Latin letters (A–Z). It becomes your account address.';
         return '';
       },
       lastName: function (v) {
@@ -450,7 +453,7 @@
       personalEmail: function (v) {
         if (!v) return 'Please enter your email address.';
         if (v.length > 254 || !EMAIL_RE.test(v)) return 'Please enter a valid email address, e.g. name@example.com.';
-        if (/@ahlab\.org$/i.test(v)) return 'Please use a personal email — not an @ahlab.org address.';
+        if (/@ahlab\.org$/i.test(v)) return 'Please use a personal email, not an @ahlab.org address.';
         return '';
       }
     };
@@ -491,13 +494,13 @@
     // Boot: no code → ask them to scan; else check the pass, then show the form or why not.
     if (!TOKEN) {
       showState('', 'fa-qrcode', 'Scan your Visitor Pass',
-        'This page is for holders of an <strong>AHL Visitor Pass</strong>. Scan the QR code on the back of your pass to claim your account. Questions? ' + contactLink + '.');
+        'This page is for holders of an <strong>AHL Visitor Pass</strong>. Scan the QR code on the back of your pass to claim your account.');
     } else {
       api({ action: 'claimInfo', token: TOKEN })
-        .then(function (info) { if (!info.ok) throw new Error(info.error || 'Request failed'); showPassState(info); })
+        .then(function (info) { if (!info.ok) throw new Error(info.error || 'Request failed'); if (info.code) TOKEN = info.code; showPassState(info); })
         .catch(function () {
           showState('err', 'fa-wifi', 'Couldn\'t check your pass',
-            'Please check your connection and reload this page. If it keeps failing, contact ' + contactLink + '.');
+            'Please check your connection and reload this page.');
         });
     }
 
