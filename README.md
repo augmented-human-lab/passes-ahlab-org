@@ -43,6 +43,11 @@ fails with "Sorry, unable to open the file at present" before the script runs. C
 before this change still point at the script URL. They work for most people, but reprint
 any that haven't been handed out.
 
+On open the claim page also asks the backend for its self-test (`selfTest`): a chip in the app
+bar shows Checking systems / Systems OK / Paused, and a failing check covers the form with a
+plain-language overlay and **Notify developer** (`notifyDeveloper`, with whatever name/email
+the visitor typed plus the pass code). The backend re-checks on `claim` and refuses if anything fails.
+
 `claim/index.html` is generated from ahl-visitor-form `src/Index.html` (same look, wording and
 validation). Keep the two in sync.
 
